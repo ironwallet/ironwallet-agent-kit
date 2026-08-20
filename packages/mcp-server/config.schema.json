@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ironwallet.io/schemas/mcp-server-env-config.json",
+  "title": "Ironwallet MCP server environment profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "authUrl",
+    "relayUrl",
+    "swapProxyUrl",
+    "evmRpcUrls",
+    "tronApiUrl",
+    "bitcoinApiUrl",
+    "litecoinApiUrl",
+    "dogeApiUrl",
+    "solanaRpcUrl",
+    "tonApiUrl",
+    "xrpRpcUrl",
+    "bitcoinTestnet"
+  ],
+  "properties": {
+    "authUrl": { "type": "string", "format": "uri" },
+    "relayUrl": { "type": "string", "format": "uri" },
+    "swapProxyUrl": { "type": "string", "format": "uri" },
+    "evmRpcUrls": {
+      "type": "object",
+      "description": "JSON-RPC HTTPS endpoints for EVM chains. Non-EVM networks use the dedicated *ApiUrl / *RpcUrl fields.",
+      "additionalProperties": false,
+      "required": [
+        "ethereum",
+        "bsc",
+        "polygon",
+        "base",
+        "arbitrum",
+        "optimism",
+        "avalanche"
+      ],
+      "properties": {
+        "ethereum": { "type": "string", "format": "uri", "minLength": 1 },
+        "bsc": { "type": "string", "format": "uri", "minLength": 1 },
+        "polygon": { "type": "string", "format": "uri", "minLength": 1 },
+        "base": { "type": "string", "format": "uri", "minLength": 1 },
+        "arbitrum": { "type": "string", "format": "uri", "minLength": 1 },
+        "optimism": { "type": "string", "format": "uri", "minLength": 1 },
+        "avalanche": { "type": "string", "format": "uri", "minLength": 1 }
+      }
+    },
+    "tronApiUrl": { "type": "string" },
+    "bitcoinApiUrl": { "type": "string" },
+    "litecoinApiUrl": { "type": "string" },
+    "dogeApiUrl": { "type": "string" },
+    "solanaRpcUrl": { "type": "string" },
+    "tonApiUrl": { "type": "string" },
+    "xrpRpcUrl": { "type": "string" },
+    "bitcoinTestnet": { "type": "boolean" }
+  }
+}

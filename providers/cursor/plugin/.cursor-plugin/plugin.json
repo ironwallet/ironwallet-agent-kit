@@ -1,0 +1,15 @@
+{
+  "name": "ironwallet",
+  "displayName": "Ironwallet",
+  "version": "1.0.0",
+  "description": "Local Ironwallet MCP: balances, transfers, and Swap Proxy swaps. Seeds stay encrypted on the machine.",
+  "author": {
+    "name": "Ironwallet"
+  },
+  "homepage": "https://ironwallet.io/ai",
+  "repository": "https://github.com/ironwallet-ai/ironwallet-agent-kit",
+  "license": "MIT",
+  "logo": "assets/logo.svg",
+  "keywords": ["wallet", "crypto", "mcp", "swap", "transfer", "web3"],
+  "tags": ["developer-tools", "web3", "wallet", "finance"]
+}

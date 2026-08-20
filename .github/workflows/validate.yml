@@ -1,0 +1,41 @@
+name: validate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check package.json homepage and repository
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("fs");
+          const pkg = JSON.parse(
+            fs.readFileSync("packages/mcp-server/package.json", "utf8"),
+          );
+          if (pkg.homepage !== "https://ironwallet.io/ai") {
+            console.error("homepage must be https://ironwallet.io/ai, got", pkg.homepage);
+            process.exit(1);
+          }
+          const repo = pkg.repository && pkg.repository.url;
+          if (!repo || !repo.includes("github.com/Ironwallet/ironwallet-agent-kit")) {
+            console.error("repository.url must point at Ironwallet/ironwallet-agent-kit, got", repo);
+            process.exit(1);
+          }
+          if (pkg.publishConfig && pkg.publishConfig.registry) {
+            console.error("publishConfig.registry must not be present on the public slice");
+            process.exit(1);
+          }
+          NODE
+      - name: Fail on internal hosts
+        run: |
+          set -euo pipefail
+          if grep -RIn --exclude-dir=.git --exclude-dir=node_modules \
+            -e 'gitlab\.ffsw\.team' -e 'nexus\.ffsw\.team' -e 'gitlab\.bmservice\.local' .; then
+            echo "public slice must not contain internal hosts"
+            exit 1
+          fi

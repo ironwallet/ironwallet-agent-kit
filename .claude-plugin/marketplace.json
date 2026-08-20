@@ -1,0 +1,17 @@
+{
+  "name": "ironwallet",
+  "owner": {
+    "name": "Ironwallet"
+  },
+  "metadata": {
+    "description": "Ironwallet for AI agents: MCP server, skills and safety rules"
+  },
+  "plugins": [
+    {
+      "name": "ironwallet",
+      "source": "./providers/claude/plugin/",
+      "description": "Local Ironwallet MCP: balances, transfers, and Swap Proxy swaps. Seeds stay encrypted on the machine.",
+      "version": "0.7.1"
+    }
+  ]
+}

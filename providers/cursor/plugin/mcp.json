@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ironwallet": {
+      "command": "npx",
+      "args": ["-y", "@ironwallet/mcp-server"]
+    }
+  }
+}

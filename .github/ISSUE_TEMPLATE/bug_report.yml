@@ -1,0 +1,68 @@
+name: Bug report
+description: Something in the agent kit or MCP server is broken
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. **Do not** include recovery phrases, private keys, or screenshots of the wallet manager showing a seed.
+
+        Vulnerabilities go to [SECURITY.md](https://github.com/Ironwallet/ironwallet-agent-kit/blob/main/SECURITY.md), not here.
+  - type: dropdown
+    id: harness
+    attributes:
+      label: Harness
+      description: Where you run Iron Wallet. Required so we can reproduce.
+      options:
+        - Cursor
+        - Claude Code
+        - MCP only (npx or another MCP client)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Describe the bug
+      description: What you expected, what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro-steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Install …
+        2. Call `list_wallets` …
+        3. See error …
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: Windows 10 / macOS 15 / Ubuntu 24.04
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      placeholder: "20.19.0"
+    validations:
+      required: true
+  - type: input
+    id: kit-version
+    attributes:
+      label: Plugin or package version
+      description: Plugin version from the harness, or `@ironwallet/mcp-server` version from npm.
+      placeholder: 0.7.1
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Redact seeds and the wrapping secret. MCP stdout is the protocol — prefer `~/.ironwallet-mcp/logs/` with secrets stripped.
+    validations:
+      required: false

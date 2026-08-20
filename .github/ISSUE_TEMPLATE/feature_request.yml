@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest an improvement to the agent kit or MCP server
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repository is a production snapshot. Accepted ideas are ported internally and ship in a later export — see [CONTRIBUTING.md](https://github.com/Ironwallet/ironwallet-agent-kit/blob/main/CONTRIBUTING.md).
+  - type: dropdown
+    id: harness
+    attributes:
+      label: Harness
+      options:
+        - Cursor
+        - Claude Code
+        - MCP only (npx or another MCP client)
+        - All / not harness-specific
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is hard or missing today?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What you want to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false

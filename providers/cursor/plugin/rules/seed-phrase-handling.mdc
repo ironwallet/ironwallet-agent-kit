@@ -1,0 +1,10 @@
+---
+description: Never expose Ironwallet recovery phrases or private keys
+alwaysApply: true
+---
+
+Recovery phrases and private keys must never appear in chat, files, logs, or
+commits. Do not ask the user to paste a seed into the conversation.
+
+Backup and import go only through `open_wallet_manager` (or the `backup_url`
+from `create_wallets`) in the local browser.

@@ -23,11 +23,11 @@ jobs:
           }
           const repo = pkg.repository && pkg.repository.url;
           const allowed = [
-            "github.com/ironwallet-ai/ironwallet-agent-kit",
+            "github.com/ironwallet/ironwallet-agent-kit",
             "github.com/Ironwallet/ironwallet-agent-kit",
           ];
           if (!repo || !allowed.some((u) => repo.includes(u))) {
-            console.error("repository.url must point at ironwallet-ai/ironwallet-agent-kit, got", repo);
+            console.error("repository.url must point at ironwallet/ironwallet-agent-kit, got", repo);
             process.exit(1);
           }
           if (pkg.publishConfig && pkg.publishConfig.registry) {

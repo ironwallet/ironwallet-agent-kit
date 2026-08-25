@@ -2,7 +2,10 @@
   "mcpServers": {
     "ironwallet": {
       "command": "npx",
-      "args": ["-y", "@ironwallet/mcp-server"]
+      "args": ["-y", "@ironwallet/mcp-server"],
+      "env": {
+        "IW_READ_ONLY": "false"
+      }
     }
   }
 }

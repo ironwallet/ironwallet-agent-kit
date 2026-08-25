@@ -186,11 +186,19 @@ export interface Config {
   httpForwardTimeoutMs: number;
   /** Extra retry attempts for idempotent requests (total tries = retries + 1). */
   httpRetries: number;
+  /** When true, `send_transfer` and `execute_swap` are rejected immediately. */
+  readOnly: boolean;
 }
 
 function envOr(key: string, fallback: string): string {
   const v = process.env[key];
   return v && v.length > 0 ? v : fallback;
+}
+
+function envBool(key: string, fallback: boolean): boolean {
+  const v = process.env[key];
+  if (v === undefined || v === "") return fallback;
+  return !/^(0|false|off|no)$/i.test(v);
 }
 
 /** Parse an integer env var, clamped to [min, max], falling back on invalid input. */
@@ -250,8 +258,19 @@ export function getConfig(): Config {
     // inclusion; default 60s. Cap raised to 5 min so slow envs can override.
     httpForwardTimeoutMs: envInt("IW_HTTP_FORWARD_TIMEOUT_MS", 60000, 5000, 300000),
     httpRetries: envInt("IW_HTTP_RETRIES", 2, 0, 10),
+    readOnly: envBool("IW_READ_ONLY", false),
   };
   return cached;
+}
+
+/** Reject send/swap when `IW_READ_ONLY` is set. */
+export function assertServerWritable(action: "send" | "swap"): void {
+  if (!getConfig().readOnly) return;
+  throw new Error(
+    action === "swap"
+      ? "Server is read-only (IW_READ_ONLY); swaps are disabled."
+      : "Server is read-only (IW_READ_ONLY); sending is disabled.",
+  );
 }
 
 /** Common device-mimicking headers sent to auth, relay, and Swap Proxy. */

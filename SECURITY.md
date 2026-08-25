@@ -13,7 +13,7 @@ Product terms and privacy live on the website, not here:
 
 Report privately using **one** of:
 
-1. **GitHub Security Advisories** (preferred once this repository is public): [Open a private advisory](https://github.com/ironwallet-ai/ironwallet-agent-kit/security/advisories/new)
+1. **GitHub Security Advisories** (preferred once this repository is public): [Open a private advisory](https://github.com/ironwallet/ironwallet-agent-kit/security/advisories/new)
 2. **Email** the Security group: [security@ironwallet.io](mailto:security@ironwallet.io)
 
 In the report, include:
@@ -31,7 +31,7 @@ There is no public bug bounty for this repository.
 **In scope (this repository)**
 
 - Local MCP server: keystore encryption, signing, tool handlers, wallet-manager loopback page
-- Cursor and Claude Code plugins, skills, rules, and the operator agent
+- Cursor, Claude Code, Codex, and Grok plugins, skills, rules, and the operator agent
 - Secrets written under `~/.ironwallet-mcp/` (wrapping secret, relay API key, device id, logs)
 
 **Out of scope (still report privately; they are not fixed in this tree)**
@@ -45,7 +45,7 @@ There is no public bug bounty for this repository.
 
 The MCP server is a **self-custody hot wallet** on the user’s machine. Recovery phrases are encrypted at rest in `~/.ironwallet-mcp/keystore.json` and unwrapped with a local secret (`keystore-passphrase`, or `IW_PASSPHRASE` if set). The server decrypts locally in order to sign. The mnemonic and private keys never appear in MCP tool arguments or results, in agent chat, in logs intended for the model, or in HTTPS bodies to Ironwallet backends.
 
-What **does** leave the machine: signed transactions and swap payloads, plus non-secret metadata (wallet names/addresses, balances, quotes, a generated relay API key, a device id). Signing never happens on Ironwallet servers. There is **no** per-transaction confirmation UI. Optional per-wallet policy (`readOnly`, `maxPerTx`, transfer recipient allow-list) is off by default.
+What **does** leave the machine: signed transactions and swap payloads, plus non-secret metadata (wallet names/addresses, balances, quotes, a generated relay API key, a device id). Signing never happens on Ironwallet servers. There is **no** per-transaction confirmation UI. Optional per-wallet policy (`readOnly`, `maxPerTx`, transfer recipient allow-list) is off by default. Process-wide `IW_READ_ONLY` rejects `send_transfer` and `execute_swap` before that policy.
 
 Anyone with both the keystore file **and** the wrapping secret can move funds. A leaked seed cannot be revoked. Treat this as a dedicated hot wallet with a balance you can afford to lose. Timeout is not always failure: poll `get_operation_status` / `get_swap_status` before retrying a send or swap.
 

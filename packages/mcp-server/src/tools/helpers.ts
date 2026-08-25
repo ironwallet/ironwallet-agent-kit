@@ -20,10 +20,30 @@ import {
 
 export const networkEnum = z.enum(ALL_NETWORKS as [NetworkId, ...NetworkId[]]);
 
-export function ok(payload: unknown) {
+export type ImageContent = {
+  type: "image";
+  data: string;
+  mimeType: "image/png";
+  annotations?: {
+    audience?: Array<"user" | "assistant">;
+    priority?: number;
+  };
+};
+
+/** MCP 2025-06-18: audience=user asks the host to show the image in the UI. */
+const USER_VISIBLE_IMAGE: NonNullable<ImageContent["annotations"]> = {
+  audience: ["user", "assistant"],
+  priority: 0.9,
+};
+
+export function ok(payload: unknown, images: ImageContent[] = []) {
   return {
     content: [
       { type: "text" as const, text: JSON.stringify(payload, null, 2) },
+      ...images.map((img) => ({
+        ...img,
+        annotations: img.annotations ?? USER_VISIBLE_IMAGE,
+      })),
     ],
   };
 }

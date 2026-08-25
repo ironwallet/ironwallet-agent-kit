@@ -7,15 +7,17 @@ body:
       value: |
         Thanks for the report. **Do not** include recovery phrases, private keys, or screenshots of the wallet manager showing a seed.
 
-        Vulnerabilities go to [SECURITY.md](https://github.com/ironwallet-ai/ironwallet-agent-kit/blob/main/SECURITY.md), not here.
+        Vulnerabilities go to [SECURITY.md](https://github.com/ironwallet/ironwallet-agent-kit/blob/main/SECURITY.md), not here.
   - type: dropdown
     id: harness
     attributes:
       label: Harness
-      description: Where you run Iron Wallet. Required so we can reproduce.
+      description: Where you run Ironwallet. Required so we can reproduce.
       options:
         - Cursor
         - Claude Code
+        - Codex
+        - Grok
         - MCP only (npx or another MCP client)
         - Other
     validations:

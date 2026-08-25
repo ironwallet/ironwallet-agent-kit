@@ -3,9 +3,12 @@ description: Ironwallet transfers and swaps — hot wallet, no blind retries
 alwaysApply: false
 ---
 
-The limiter is the wallet balance. Prefer a dedicated hot wallet with limited
-funds. The agent may send and swap without a per-transaction confirmation UI.
-Do not add fake amount caps, rate limits, or modals.
+The limiter is the wallet balance, plus optional `list_wallets.policy` when
+`enabled` is true (`readOnly`, `maxPerTx`, recipient allow-list). Process-wide
+`IW_READ_ONLY` also blocks `send_transfer` and `execute_swap`. Prefer a
+dedicated hot wallet with limited funds. The agent may send and swap without
+a per-transaction confirmation UI; those calls are irreversible once
+broadcast. Do not add fake amount caps, rate limits, or modals.
 
 If `send_transfer` or `execute_swap` times out, poll `get_operation_status` /
 `get_swap_status` before retrying. Do not resubmit blindly.

@@ -1,8 +1,8 @@
 # Ironwallet for Claude Code
 
-Local Ironwallet MCP: balances, transfers, and Swap Proxy swaps. Seeds stay encrypted on the machine.
+The Ironwallet MCP server gives Claude Code secure access to a **non-custodial** wallet. Seed phrases stay encrypted on the host and never leave this machine. The agent can retrieve balances, sign locally, transfer tokens, and swap across 10+ networks.
 
-Give Claude Code a **self-custody hot wallet** on your computer, seed-compatible with the [Ironwallet](https://ironwallet.io) app. Signing never leaves this machine. There is no per-transaction confirmation UI.
+Seed-compatible with the [Ironwallet](https://ironwallet.io) app. There is no per-transaction confirmation UI.
 
 **Requirements:** Node.js 20+ (`npx`). Use a dedicated wallet with limited balance.
 
@@ -11,8 +11,8 @@ Product page: [ironwallet.io/ai](https://ironwallet.io/ai)
 ## Install
 
 ```bash
-claude plugin marketplace add ironwallet-ai/ironwallet-agent-kit
-claude plugin install ironwallet@ironwallet
+claude plugin marketplace add ironwallet/ironwallet-agent-kit
+claude plugin install ironwallet-mcp@ironwallet
 ```
 
 From a local clone, use `.` instead of the GitHub repo. Reload so MCP picks up `PATH`.
@@ -21,9 +21,10 @@ From a local clone, use `.` instead of the GitHub repo. Reload so MCP picks up `
 
 | Tool | Purpose | Moves funds? |
 |------|---------|:------------:|
-| `list_wallets` | Names and addresses | no |
+| `list_wallets` | Names, addresses, and `policy` | no |
 | `create_wallets` | New wallets; returns a browser `backup_url` | no |
 | `open_wallet_manager` | Local browser UI to import / create / back up | no |
+| `get_deposit_qr` | PNG QR (try chat; else local `qr_url`) | no |
 | `get_balance` | Native or token balance | no |
 | `estimate_transfer` | Fee estimate, no broadcast | no |
 | `send_transfer` | Sign locally and send | **yes** |

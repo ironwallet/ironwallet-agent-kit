@@ -4,7 +4,7 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { canSwap, parseNetworkId, type NetworkId } from "../config.js";
+import { assertServerWritable, canSwap, parseNetworkId, type NetworkId } from "../config.js";
 import { getBalance } from "../api/balances.js";
 import {
   assetKey,
@@ -379,7 +379,7 @@ export function registerSwapTools(server: McpServer, helpers: ToolHelpers): void
     {
       title: "Execute swap",
       description:
-        "Execute a swap via Swap Proxy: fresh estimate → create → local sign → execute. Does NOT use the transfer relay. Returns operationId and txHash; poll with get_swap_status.",
+        "Execute a swap via Swap Proxy: fresh estimate → create → local sign → execute. Does NOT use the transfer relay. Irreversible once submitted — no second confirmation. Returns operationId and txHash; poll with get_swap_status.",
       inputSchema: {
         wallet: z.string().optional(),
         from: assetInputSchema,
@@ -396,6 +396,7 @@ export function registerSwapTools(server: McpServer, helpers: ToolHelpers): void
         "execute_swap",
         { wallet, from, to, amount, maxMode },
         async ({ correlationId, started }) => {
+          assertServerWritable("swap");
           const prep = await prepareSwapSides(helpers, {
             wallet,
             from,

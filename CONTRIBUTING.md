@@ -55,7 +55,11 @@ Plugin manifests and `@ironwallet/mcp-server` share the same `x.y.z`. Bump them 
 - `packages/mcp-server/package.json` (and its lockfile)
 - `.cursor-plugin/marketplace.json`
 - `.claude-plugin/marketplace.json`
+- `.agents/plugins/marketplace.json`
+- `.grok-plugin/marketplace.json`
 - `providers/cursor/plugin/.cursor-plugin/plugin.json`
 - `providers/claude/plugin/.claude-plugin/plugin.json`
+- `providers/codex/plugin/.codex-plugin/plugin.json`
+- `providers/grok/plugin/.grok-plugin/plugin.json`
 
 Move **Unreleased** notes in `CHANGELOG.md` into that version. Skill-only wording fixes can sit under **Unreleased** until the next release; do not bump semver on every copy-edit.

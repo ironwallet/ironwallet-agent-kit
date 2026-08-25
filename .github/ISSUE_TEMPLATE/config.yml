@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: Report a vulnerability
-    url: https://github.com/ironwallet-ai/ironwallet-agent-kit/security/advisories/new
+    url: https://github.com/ironwallet/ironwallet-agent-kit/security/advisories/new
     about: Do not file public issues for security bugs. See SECURITY.md.
   - name: Product page
     url: https://ironwallet.io/ai
-    about: Install Iron Wallet for AI agents.
+    about: Install Ironwallet for AI agents.
   - name: Terms and conditions
     url: https://ironwallet.io/terms-and-conditions/
     about: Product terms (INWAY AG). Not filed as a GitHub issue.

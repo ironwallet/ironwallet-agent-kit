@@ -1,12 +1,21 @@
 {
   "name": "@ironwallet/mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "MIT",
-  "description": "Local MCP server for Ironwallet: seed-compatible wallet management, transfers and Swap Proxy swaps for EVM, Tron, Bitcoin, Litecoin, Doge, Solana, XRP and TON.",
+  "description": "Non-custodial Ironwallet MCP: seeds stay encrypted on the host. Balances, local signing, transfers, and swaps across 10+ networks.",
   "homepage": "https://ironwallet.io/ai",
+  "bugs": {
+    "url": "https://github.com/ironwallet/ironwallet-agent-kit/issues",
+    "email": "security@ironwallet.io"
+  },
+  "author": {
+    "name": "Ironwallet",
+    "email": "security@ironwallet.io",
+    "url": "https://ironwallet.io"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ironwallet-ai/ironwallet-agent-kit.git",
+    "url": "https://github.com/ironwallet/ironwallet-agent-kit.git",
     "directory": "packages/mcp-server"
   },
   "type": "module",
@@ -16,6 +25,7 @@
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
+    "test": "tsx --test src/qr/deposit-qr.test.ts",
     "start": "node dist/cli.js",
     "dev": "tsx src/cli.ts",
     "prepack": "npm run build"
@@ -42,12 +52,16 @@
     "bs58": "^6.0.0",
     "bs58check": "^4.0.0",
     "ethers": "^6.15.0",
+    "pngjs": "^7.0.0",
+    "qrcode": "^1.5.4",
     "ripple-binary-codec": "^2.8.0",
     "ripple-keypairs": "^3.0.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/pngjs": "^6.0.5",
+    "@types/qrcode": "^1.5.6",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

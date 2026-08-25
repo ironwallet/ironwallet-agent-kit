@@ -2,7 +2,9 @@
 
 Local [MCP](https://modelcontextprotocol.io) server for **Ironwallet** (`ironwallet-mcp` bin).
 
-Give an agent a **self-custody hot wallet** on this machine, seed-compatible with the [Ironwallet](https://ironwallet.io) app. Signing never leaves the machine. Recovery phrases stay encrypted on disk and **never pass through the agent**.
+The Ironwallet MCP server gives AI agents secure access to a **non-custodial** wallet. Seed phrases stay encrypted on the host and never leave this machine — they never pass through the agent. Agents can retrieve balances, sign locally, transfer tokens, and swap across 10+ networks.
+
+Seed-compatible with the [Ironwallet](https://ironwallet.io) app.
 
 There is no per-transaction confirmation UI.
 
@@ -57,7 +59,7 @@ The mnemonic never appears in tool inputs/outputs, logs meant for the agent, or 
 | Area | Capability |
 |------|------------|
 | **Networks** | Ethereum, BSC, Polygon, Base, Arbitrum, Optimism, Avalanche, Tron, Bitcoin, Litecoin, Dogecoin, Solana, XRP, TON |
-| **Wallets** | Create, import, list, and back up (local browser for secrets) |
+| **Wallets** | Create, import, list, deposit QR, and back up (local browser for secrets) |
 | **Balances** | Native coins and tokens |
 | **Transfers** | Fee estimate and send through Ironwallet’s transfer relay |
 | **Swaps** | Quotes and execution through Ironwallet **Swap Proxy** |
@@ -69,9 +71,10 @@ The mnemonic never appears in tool inputs/outputs, logs meant for the agent, or 
 
 | Tool | Purpose | Moves funds? |
 |------|---------|:------------:|
-| `list_wallets` | Names and addresses | no |
+| `list_wallets` | Names, addresses, and `policy` | no |
 | `create_wallets` | New wallets; returns a browser `backup_url` | no |
 | `open_wallet_manager` | Local browser UI to import / create / back up | no |
+| `get_deposit_qr` | PNG QR (try chat; else local `qr_url`) | no |
 | `get_balance` | Native or token balance | no |
 | `estimate_transfer` | Fee estimate, no broadcast | no |
 | `send_transfer` | Sign locally and send | **yes** |
@@ -89,6 +92,7 @@ No tool accepts or returns a seed. Import and backup only in the local browser (
 - **Create:** `create_wallets` — the agent gets names and addresses; open `backup_url` in a browser to view and back up recovery phrases.
 - **Import / back up:** `open_wallet_manager` — loopback-only page; the phrase is typed or shown only in the browser.
 - **List:** `list_wallets`
+- **Deposit QR:** `get_deposit_qr` — PNG (generated on the fly) plus `qr_url`. Show the image in chat when the host renders it; otherwise open `qr_url`. Pass `network` for one chain. The wallet manager also has a QR button next to each address.
 
 The browser page binds to `127.0.0.1` under an unguessable path and shuts down after 15 minutes of inactivity.
 
@@ -132,6 +136,7 @@ The user-facing backup is the **recovery phrase** in the wallet manager, not tho
 | Variable | Default | Notes |
 |----------|---------|-------|
 | `IW_PASSPHRASE` | generated locally | Override keystore wrapping secret |
+| `IW_READ_ONLY` | `false` | Process-wide: reject `send_transfer` and `execute_swap`. `true`/`1` enable; `false`/`0`/`off`/`no` disable. Distinct from per-wallet `policy.readOnly`. |
 | `IW_RELAY_API_KEY` | generated UUID | Override `x-api-key` |
 | `IW_DEVICE_ID` | generated UUID | Override `X-Device-Id` (stable per keystore directory) |
 | `IW_KEYSTORE_DIR` | `~/.ironwallet-mcp` | Keystore directory |

@@ -1,0 +1,11 @@
+---
+description: Resolve Ironwallet swap assets from catalog tools, not memory
+alwaysApply: false
+---
+
+Resolve swap networks with `list_swap_networks`. Resolve tokens with
+`list_swap_assets`. Copy `network`, `symbol`, `address`, and `decimals` from
+that catalog into `estimate_swap` / `execute_swap`.
+
+Do not invent contract addresses or decimals from training data. Omit `address`
+only for native coins.

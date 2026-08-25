@@ -4,7 +4,7 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { canSend, type NetworkId } from "../config.js";
+import { assertServerWritable, canSend, type NetworkId } from "../config.js";
 import { resolveEntry } from "../keystore/store.js";
 import { estimate, forward, operationState, type SignedEstimate } from "../api/relay.js";
 import { getBalance } from "../api/balances.js";
@@ -264,7 +264,7 @@ export function registerTransferTools(server: McpServer, helpers: ToolHelpers): 
     {
       title: "Send transfer",
       description:
-        "Send a transfer: sign locally with the wallet's key and broadcast via the Ironwallet forward relay (estimate -> sign -> forward) for EVM, Tron, Bitcoin, Litecoin, Doge, Solana, XRP and TON. Returns the transaction hash (and operation id where applicable).",
+        "Send a transfer: sign locally with the wallet's key and broadcast via the Ironwallet forward relay (estimate -> sign -> forward) for EVM, Tron, Bitcoin, Litecoin, Doge, Solana, XRP and TON. Irreversible once broadcast — no second confirmation. Returns the transaction hash (and operation id where applicable).",
       inputSchema: {
         wallet: z.string().optional(),
         network: networkEnum,
@@ -282,6 +282,7 @@ export function registerTransferTools(server: McpServer, helpers: ToolHelpers): 
         "send_transfer",
         { wallet, network, to, amount, tokenAddress, hasMemo: Boolean(memo) },
         async ({ correlationId, started }) => {
+          assertServerWritable("send");
           if (!canSend(network)) {
             throw new Error(`Sending on "${network}" is not supported.`);
           }

@@ -1,16 +1,16 @@
-# Public GitHub CODEOWNERS. Team slugs exist only after the ironwallet-ai
+# Public GitHub CODEOWNERS. Team slugs exist only after the ironwallet
 # organization and its teams are created (distribution task 12). Until then
-# GitHub ignores unmatched @ironwallet-ai/<team> names.
+# GitHub ignores unmatched @ironwallet/<team> names.
 
-*                                      @ironwallet-ai/development
+*                                      @ironwallet/development
 
-/content/                              @ironwallet-ai/development
-/content/rules/                        @ironwallet-ai/security @ironwallet-ai/development
-/providers/                            @ironwallet-ai/development
-/packages/mcp-server/                  @ironwallet-ai/development
-/scripts/                              @ironwallet-ai/devops
-/.github/                              @ironwallet-ai/devops @ironwallet-ai/development
+/content/                              @ironwallet/development
+/content/rules/                        @ironwallet/security @ironwallet/development
+/providers/                            @ironwallet/development
+/packages/mcp-server/                  @ironwallet/development
+/scripts/                              @ironwallet/devops
+/.github/                              @ironwallet/devops @ironwallet/development
 
-/SECURITY.md                           @ironwallet-ai/security
-/CODE_OF_CONDUCT.md                    @ironwallet-ai/security
-/LICENSE                               @ironwallet-ai/legal
+/SECURITY.md                           @ironwallet/security
+/CODE_OF_CONDUCT.md                    @ironwallet/security
+/LICENSE                               @ironwallet/legal

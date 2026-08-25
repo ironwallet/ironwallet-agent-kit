@@ -25,6 +25,12 @@ import {
 } from "../keystore/store.js";
 import { requirePassphrase } from "../passphrase.js";
 import { logError, logInfo } from "../log.js";
+import {
+  depositPayload,
+  renderDepositQrPng,
+  uniqueDepositTargets,
+  walletOwnsDeposit,
+} from "../qr/deposit-qr.js";
 
 const INACTIVITY_MS = 15 * 60 * 1000;
 
@@ -143,7 +149,7 @@ const STYLE = `
 
   .addr { display:flex; align-items:center; gap:10px; padding:8px 0; }
   .net {
-    font-size:11px; font-weight:700; color:var(--muted); width:44px; flex:none;
+    font-size:11px; font-weight:700; color:var(--muted); min-width:42px; flex:none;
     text-transform:uppercase; letter-spacing:.4px;
   }
   .addr code {
@@ -152,13 +158,24 @@ const STYLE = `
     padding:8px 10px; font-size:13px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
     color:var(--text);
   }
-  .copy {
+  .copy, .qr {
     flex:none; margin:0; padding:8px 12px; font-size:12px; font-weight:600;
     background:var(--surface-2); color:var(--primary); border:1px solid var(--border);
     border-radius:9px; cursor:pointer;
   }
-  .copy:hover { border-color:var(--primary); }
+  .copy:hover, .qr:hover { border-color:var(--primary); }
   .copy.copied { color:var(--success); border-color:var(--success); }
+  .qr-modal {
+    display:none; position:fixed; inset:0; z-index:40; padding:20px;
+    background:rgba(27,32,40,.55); place-items:center;
+  }
+  .qr-modal.open { display:grid; }
+  .qr-dialog {
+    background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    padding:16px; box-shadow:var(--shadow); max-width:min(480px,100%); width:100%;
+  }
+  .qr-dialog img { width:100%; height:auto; display:block; border-radius:12px; background:#fafafa; }
+  .qr-dialog .qr-actions { display:flex; justify-content:flex-end; margin-top:12px; }
 
   label { display:block; font-size:13px; color:var(--text-2); margin:14px 0 6px; }
   input, textarea, button { font:inherit; }
@@ -197,17 +214,39 @@ const STYLE = `
   .empty { color:var(--muted); font-size:14px; text-align:center; padding:18px 0; }
   a.back { color:var(--primary); font-size:14px; font-weight:600; text-decoration:none; }
   a.back:hover { text-decoration:underline; }
-  @media (max-width:480px) { ol.words { columns:2; } .net { width:40px; } }
+  @media (max-width:480px) { ol.words { columns:2; } }
 `;
 
-const COPY_SCRIPT = `
+const PAGE_SCRIPT = `
 <script>
 document.addEventListener('click', function(e){
-  var b = e.target.closest('.copy'); if(!b) return;
-  navigator.clipboard.writeText(b.dataset.addr).then(function(){
-    var t = b.textContent; b.textContent = 'Copied'; b.classList.add('copied');
-    setTimeout(function(){ b.textContent = t; b.classList.remove('copied'); }, 1200);
-  });
+  var copy = e.target.closest('.copy');
+  if (copy) {
+    navigator.clipboard.writeText(copy.dataset.addr).then(function(){
+      var t = copy.textContent; copy.textContent = 'Copied'; copy.classList.add('copied');
+      setTimeout(function(){ copy.textContent = t; copy.classList.remove('copied'); }, 1200);
+    });
+    return;
+  }
+  var qr = e.target.closest('.qr');
+  var modal = document.getElementById('qr-modal');
+  var img = document.getElementById('qr-img');
+  if (qr && modal && img) {
+    img.src = qr.dataset.src;
+    modal.classList.add('open');
+    return;
+  }
+  if (e.target.id === 'qr-modal' || e.target.closest('#qr-close')) {
+    if (modal) modal.classList.remove('open');
+    if (img) img.removeAttribute('src');
+  }
+});
+document.addEventListener('keydown', function(e){
+  if (e.key !== 'Escape') return;
+  var modal = document.getElementById('qr-modal');
+  var img = document.getElementById('qr-img');
+  if (modal) modal.classList.remove('open');
+  if (img) img.removeAttribute('src');
 });
 </script>`;
 
@@ -226,7 +265,14 @@ function layout(token: string, title: string, inner: string, showBack = true): s
 </div>
 ${inner}
 ${back}
-</div>${COPY_SCRIPT}
+</div>
+<div id="qr-modal" class="qr-modal" role="dialog" aria-modal="true" aria-label="Deposit QR">
+  <div class="qr-dialog">
+    <img id="qr-img" alt="Deposit QR">
+    <div class="qr-actions"><button class="ghost" id="qr-close" type="button">Close</button></div>
+  </div>
+</div>
+${PAGE_SCRIPT}
 </body></html>`;
 }
 
@@ -239,7 +285,7 @@ function walletCard(token: string, w: { name: string; backedUp?: boolean; addres
   const backed = w.backedUp
     ? '<span class="badge ok">Backed up</span>'
     : '<span class="badge warn">Not backed up</span>';
-  const addrs = renderAddresses(w.addresses);
+  const addrs = renderAddresses(token, w.addresses);
   return `<div class="wallet">
   <div class="wallet-head">
     <div class="wallet-name"><span class="avatar">${escapeHtml(initials(w.name))}</span>${escapeHtml(w.name)}</div>
@@ -256,32 +302,44 @@ function walletCard(token: string, w: { name: string; backedUp?: boolean; addres
 }
 
 function netLabel(net: string): string {
-  const map: Record<string, string> = { ethereum: "EVM", tron: "TRX" };
-  return map[net] ?? net.slice(0, 4).toUpperCase();
+  const map: Record<string, string> = {
+    ethereum: "EVM",
+    bsc: "BSC",
+    polygon: "POL",
+    base: "BASE",
+    arbitrum: "ARB",
+    optimism: "OP",
+    avalanche: "AVAX",
+    tron: "TRON",
+    bitcoin: "BTC",
+    litecoin: "LTC",
+    doge: "DOGE",
+    solana: "SOL",
+    ton: "TON",
+    xrp: "XRP",
+  };
+  return map[net] ?? net.toUpperCase();
 }
 
-function addressRow(net: string, addr: string): string {
+function addressRow(token: string, net: string, addr: string): string {
+  const src = `/${token}/qr?network=${encodeURIComponent(net)}&address=${encodeURIComponent(addr)}`;
   return `<div class="addr">
   <span class="net">${escapeHtml(netLabel(net))}</span>
   <code title="${escapeHtml(addr)}">${escapeHtml(addr)}</code>
   <button class="copy" data-addr="${escapeHtml(addr)}" type="button">Copy</button>
+  <button class="qr" data-src="${escapeHtml(src)}" type="button">QR</button>
 </div>`;
 }
 
 /**
  * Render one row per *unique* address. All EVM chains share the same address, so
  * collapsing avoids repeating the same value 7 times; the first network that
- * produced a given address supplies the label (ethereum → EVM, tron → TRX).
+ * produced a given address supplies the label (ethereum → EVM, bitcoin → BTC).
  */
-function renderAddresses(addresses: Record<string, string>): string {
-  const seen = new Set<string>();
-  const rows: string[] = [];
-  for (const [net, addr] of Object.entries(addresses)) {
-    if (!addr || seen.has(addr)) continue;
-    seen.add(addr);
-    rows.push(addressRow(net, addr));
-  }
-  return rows.join("");
+function renderAddresses(token: string, addresses: Record<string, string>): string {
+  return uniqueDepositTargets(addresses)
+    .map((t) => addressRow(token, t.network, t.address))
+    .join("");
 }
 
 function dashboard(token: string, notice = ""): string {
@@ -296,7 +354,7 @@ function dashboard(token: string, notice = ""): string {
     `${notice}
 <div class="card">
   <h2>Your wallets</h2>
-  <p class="section-hint">${ks.wallets.length} wallet${ks.wallets.length === 1 ? "" : "s"} · tap Copy to grab an address</p>
+  <p class="section-hint">${ks.wallets.length} wallet${ks.wallets.length === 1 ? "" : "s"} · Copy or QR to receive</p>
   ${list}
 </div>
 
@@ -334,8 +392,8 @@ function wordsBlock(mnemonic: string): string {
     .join("")}</ol>`;
 }
 
-function addressesBlock(addresses: Record<string, string>): string {
-  return renderAddresses(addresses);
+function addressesBlock(token: string, addresses: Record<string, string>): string {
+  return renderAddresses(token, addresses);
 }
 
 function html(res: import("node:http").ServerResponse, status: number, body: string): void {
@@ -414,6 +472,35 @@ export async function ensureManager(): Promise<string> {
           return;
         }
 
+        if (method === "GET" && sub === "/qr") {
+          const parsed = new URL(req.url ?? "/", "http://127.0.0.1");
+          const network = parsed.searchParams.get("network") ?? "";
+          const address = parsed.searchParams.get("address") ?? "";
+          const owned = loadKeystore().wallets.some((w) =>
+            walletOwnsDeposit(w.addresses, network, address),
+          );
+          if (!owned) {
+            html(
+              res,
+              404,
+              layout(
+                token,
+                "Not found",
+                `<div class="card"><p class="err">Unknown address.</p></div>`,
+              ),
+            );
+            return;
+          }
+          const png = await renderDepositQrPng(address, depositPayload(network, address));
+          res.writeHead(200, {
+            "Content-Type": "image/png",
+            "Cache-Control": "no-store, no-cache, must-revalidate, private",
+            "X-Content-Type-Options": "nosniff",
+          });
+          res.end(png);
+          return;
+        }
+
         if (method === "POST" && sub === "/import") {
           const form = await readForm(req);
           const created = importWallet(
@@ -430,7 +517,7 @@ export async function ensureManager(): Promise<string> {
               "Imported",
               `<div class="card"><h2 style="margin-top:0" class="ok">Imported "${escapeHtml(
                 created.name,
-              )}"</h2><p>Addresses:</p>${addressesBlock(created.addresses)}</div>`,
+              )}"</h2><p>Addresses:</p>${addressesBlock(token, created.addresses)}</div>`,
             ),
           );
           return;
@@ -450,7 +537,7 @@ export async function ensureManager(): Promise<string> {
                   c.name,
                 )}</h2><p class="warn">Write these words down offline. The wallet stays marked as not backed up until you use Reveal phrase.</p>${wordsBlock(
                   c.mnemonic ?? "",
-                )}<p>Addresses:</p>${addressesBlock(c.addresses)}</div>`,
+                )}<p>Addresses:</p>${addressesBlock(token, c.addresses)}</div>`,
             )
             .join("");
           logInfo("manager.create.ok", {

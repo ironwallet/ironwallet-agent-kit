@@ -60,7 +60,7 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-[enquiries@ironwallet.io](mailto:enquiries@ironwallet.io).
+[security@ironwallet.io](mailto:security@ironwallet.io).
 
 All complaints will be reviewed and investigated promptly and fairly.
 

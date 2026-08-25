@@ -4,7 +4,7 @@
  * before signing.
  */
 
-import type { WalletEntry } from "./keystore/types.js";
+import type { WalletEntry, WalletPolicy } from "./keystore/types.js";
 import { normalizeAddress } from "./wallet/derive.js";
 import type { NetworkId } from "./config.js";
 import { logInfo, logWarn } from "./log.js";
@@ -40,6 +40,12 @@ function parseNonNegativeDecimal(raw: string): { int: bigint; frac: string } {
   }
   const [intPart, fracPart = ""] = t.split(".");
   return { int: BigInt(intPart), frac: fracPart };
+}
+
+/** Always-present policy for `list_wallets` (`enabled: false` when unset). */
+export function listWalletPolicy(policy: WalletPolicy | undefined): WalletPolicy {
+  if (!policy || !policy.enabled) return { enabled: false };
+  return policy;
 }
 
 /** Throws with a clear message if the operation violates the wallet policy. */

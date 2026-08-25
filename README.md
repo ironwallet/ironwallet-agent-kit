@@ -1,14 +1,14 @@
 # Ironwallet for AI agents
 
-Local Ironwallet MCP: balances, transfers, and Swap Proxy swaps. Seeds stay encrypted on the machine.
+The Ironwallet MCP server gives AI agents secure access to a **non-custodial** wallet. Seed phrases stay encrypted on the host and never leave this machine. Agents can retrieve balances, sign locally, transfer tokens, and swap across 10+ networks.
 
-Give an agent a **self-custody hot wallet** on your computer, seed-compatible with the [Ironwallet](https://ironwallet.io) app. Signing never leaves this machine. There is no per-transaction confirmation UI.
-
-This repository is the **agent kit and MCP server**. The Ironwallet mobile/desktop app stays closed-source.
+Seed-compatible with the [Ironwallet](https://ironwallet.io) app. There is no per-transaction confirmation UI.
 
 **Requirements:** Node.js 20+ (`npx`). Use a dedicated wallet with limited balance.
 
-Product page: [ironwallet.io/ai](https://ironwallet.io/ai)
+Product page: [ironwallet.io/ai](https://ironwallet.io/ai). Machine-readable index: [llms.txt](llms.txt).
+
+Opening this repository in Claude Code starts the wallet MCP via [`.mcp.json`](.mcp.json). See [CLAUDE.md](CLAUDE.md).
 
 ## Install
 
@@ -17,8 +17,22 @@ Product page: [ironwallet.io/ai](https://ironwallet.io/ai)
 **Claude Code:**
 
 ```bash
-claude plugin marketplace add ironwallet-ai/ironwallet-agent-kit
-claude plugin install ironwallet@ironwallet
+claude plugin marketplace add ironwallet/ironwallet-agent-kit
+claude plugin install ironwallet-mcp@ironwallet
+```
+
+**Codex:**
+
+```bash
+codex plugin marketplace add ironwallet/ironwallet-agent-kit
+codex plugin add ironwallet-mcp@ironwallet
+```
+
+**Grok:**
+
+```bash
+grok plugin marketplace add ironwallet/ironwallet-agent-kit
+grok plugin install ironwallet-mcp --trust
 ```
 
 Reload so MCP picks up `PATH`. From a local clone, use `.` instead of the GitHub repo.
@@ -44,7 +58,7 @@ Manually installed MCP does **not** auto-update with the plugin.
 
 | Skill | When to use |
 |-------|-------------|
-| **ironwallet-mcp** | Balances, transfers, Swap Proxy swaps, create / import / backup. Invoke as `/ironwallet-mcp` |
+| **ironwallet-mcp** | Non-custodial wallet: balances, local signing, transfers, swaps, deposit QR. Invoke as `/ironwallet-mcp` |
 
 ### Rules
 
@@ -58,7 +72,7 @@ Manually installed MCP does **not** auto-update with the plugin.
 
 | Agent | Purpose |
 |-------|---------|
-| **ironwallet-operator** | Operate the local wallet: balances, estimates, sends, swaps, status |
+| **ironwallet-operator** | Operate the non-custodial wallet: balances, local signing, transfers, swaps, deposit QR |
 
 ### MCP server
 
@@ -68,9 +82,10 @@ Manually installed MCP does **not** auto-update with the plugin.
 
 | Tool | Purpose | Moves funds? |
 |------|---------|:------------:|
-| `list_wallets` | Names and addresses | no |
+| `list_wallets` | Names, addresses, and `policy` | no |
 | `create_wallets` | New wallets; returns a browser `backup_url` | no |
 | `open_wallet_manager` | Local browser UI to import / create / back up | no |
+| `get_deposit_qr` | PNG QR (try chat; else local `qr_url`) | no |
 | `get_balance` | Native or token balance | no |
 | `estimate_transfer` | Fee estimate, no broadcast | no |
 | `send_transfer` | Sign locally and send | **yes** |

@@ -1,13 +1,14 @@
 {
-  "name": "ironwallet",
+  "name": "ironwallet-mcp",
   "displayName": "Ironwallet",
-  "version": "1.0.0",
-  "description": "Local Ironwallet MCP: balances, transfers, and Swap Proxy swaps. Seeds stay encrypted on the machine.",
+  "version": "1.0.1",
+  "description": "The Ironwallet MCP server gives AI agents a non-custodial hot wallet on the host machine. Seed phrases stay encrypted locally and never leave the host. Agents can check balances, transfer tokens, and swap via Swap Proxy across 10+ networks (EVM, Tron, Bitcoin, Litecoin, Dogecoin, Solana, XRP, TON).",
   "author": {
-    "name": "Ironwallet"
+    "name": "Ironwallet",
+    "email": "security@ironwallet.io"
   },
   "homepage": "https://ironwallet.io/ai",
-  "repository": "https://github.com/ironwallet-ai/ironwallet-agent-kit",
+  "repository": "https://github.com/ironwallet/ironwallet-agent-kit",
   "license": "MIT",
   "logo": "assets/logo.svg",
   "keywords": ["wallet", "crypto", "mcp", "swap", "transfer", "web3"],

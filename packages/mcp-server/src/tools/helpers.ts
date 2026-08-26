@@ -2,8 +2,6 @@
  * Shared MCP tool helpers: response shaping, logging wrapper, wallet session.
  */
 
-import { z } from "zod";
-import { ALL_NETWORKS, type NetworkId } from "../config.js";
 import {
   resolveEntry,
   syncAddresses,
@@ -17,8 +15,6 @@ import {
   logInfo,
   newCorrelationId,
 } from "../log.js";
-
-export const networkEnum = z.enum(ALL_NETWORKS as [NetworkId, ...NetworkId[]]);
 
 export type ImageContent = {
   type: "image";

@@ -31,6 +31,13 @@ import {
   uniqueDepositTargets,
   walletOwnsDeposit,
 } from "../qr/deposit-qr.js";
+import {
+  CONSENT_BULLETS,
+  CONSENT_CHECKBOX,
+  CONSENT_LEAD,
+  CONSENT_TITLE,
+} from "../consent/copy.js";
+import { hasCurrentConsent, recordConsent } from "../consent/store.js";
 
 const INACTIVITY_MS = 15 * 60 * 1000;
 
@@ -191,6 +198,16 @@ const STYLE = `
     box-shadow:var(--shadow);
   }
   button.btn:hover { filter:brightness(1.05); }
+  button.btn:disabled { opacity:.45; cursor:not-allowed; filter:none; }
+  .consent-list { margin:12px 0 0; padding-left:20px; color:var(--text); }
+  .consent-list li { margin:8px 0; }
+  .consent-check {
+    display:flex; align-items:flex-start; gap:10px; margin:18px 0 8px; font-size:14px;
+  }
+  .consent-check input { width:auto; margin-top:3px; accent-color:var(--primary); }
+  .consent-actions { display:flex; align-items:center; gap:16px; margin-top:8px; }
+  .consent-actions .btn { margin-top:0; }
+  .consent-cancel { color:var(--muted); font-size:14px; }
   button.ghost {
     margin:0; height:auto; padding:8px 14px; background:transparent; color:var(--primary);
     border:1px solid var(--border); border-radius:10px; font-size:13px; font-weight:600;
@@ -342,6 +359,42 @@ function renderAddresses(token: string, addresses: Record<string, string>): stri
     .join("");
 }
 
+function consentPage(token: string, notice = ""): string {
+  const bullets = CONSENT_BULLETS.map((b) => `<li>${escapeHtml(b)}</li>`).join("");
+  const err = notice ? `<p class="err">${escapeHtml(notice)}</p>` : "";
+  return layout(
+    token,
+    CONSENT_TITLE,
+    `<div class="card">
+  <h2 style="margin-top:0">${escapeHtml(CONSENT_TITLE)}</h2>
+  <p>${escapeHtml(CONSENT_LEAD)}</p>
+  <ul class="consent-list">${bullets}</ul>
+  ${err}
+  <form method="POST" action="/${token}/consent" id="consent-form">
+    <label class="consent-check">
+      <input id="consent-box" type="checkbox" name="understood" value="1" required>
+      <span>${escapeHtml(CONSENT_CHECKBOX)}</span>
+    </label>
+    <div class="consent-actions">
+      <button class="btn" id="consent-go" type="submit" disabled>Continue</button>
+      <span class="consent-cancel">Close this tab to cancel.</span>
+    </div>
+  </form>
+</div>
+<script>
+(function(){
+  var box = document.getElementById('consent-box');
+  var go = document.getElementById('consent-go');
+  if (!box || !go) return;
+  function sync(){ go.disabled = !box.checked; }
+  box.addEventListener('change', sync);
+  sync();
+})();
+</script>`,
+    false,
+  );
+}
+
 function dashboard(token: string, notice = ""): string {
   const ks = loadKeystore();
   const list = ks.wallets.length
@@ -461,6 +514,18 @@ export async function ensureManager(): Promise<string> {
     void (async () => {
       try {
         if (method === "GET" && sub === "/") {
+          html(res, 200, hasCurrentConsent() ? dashboard(token) : consentPage(token));
+          return;
+        }
+
+        if (method === "POST" && sub === "/consent") {
+          const form = await readForm(req);
+          if (form.understood !== "1" && form.understood !== "on") {
+            html(res, 400, consentPage(token, "Check the box to continue."));
+            return;
+          }
+          recordConsent("manager");
+          logInfo("manager.consent.ok", {});
           html(res, 200, dashboard(token));
           return;
         }
@@ -502,6 +567,10 @@ export async function ensureManager(): Promise<string> {
         }
 
         if (method === "POST" && sub === "/import") {
+          if (!hasCurrentConsent()) {
+            html(res, 403, consentPage(token, "Accept the disclaimer before importing a wallet."));
+            return;
+          }
           const form = await readForm(req);
           const created = importWallet(
             form.mnemonic ?? "",
@@ -524,6 +593,10 @@ export async function ensureManager(): Promise<string> {
         }
 
         if (method === "POST" && sub === "/create") {
+          if (!hasCurrentConsent()) {
+            html(res, 403, consentPage(token, "Accept the disclaimer before creating a wallet."));
+            return;
+          }
           const form = await readForm(req);
           const count = Math.max(1, Math.min(50, parseInt(form.count ?? "1", 10) || 1));
           const created = createWallets(count, requirePassphrase(), {

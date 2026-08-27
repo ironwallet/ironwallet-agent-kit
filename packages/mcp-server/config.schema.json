@@ -22,6 +22,16 @@
     "authUrl": { "type": "string", "format": "uri" },
     "relayUrl": { "type": "string", "format": "uri" },
     "swapProxyUrl": { "type": "string", "format": "uri" },
+    "ratesApiUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Rates backend for USD policy limits (/api/v1/rate/rates). Optional: when absent, maxPerTxUsd rejects operations (fail closed)."
+    },
+    "staticResourcesUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Static resources base with per-network asset catalogs (/assets/main/blockchains/...). Optional; used to map tokens to rates ids."
+    },
     "evmRpcUrls": {
       "type": "object",
       "description": "JSON-RPC HTTPS endpoints for EVM chains. Non-EVM networks use the dedicated *ApiUrl / *RpcUrl fields.",

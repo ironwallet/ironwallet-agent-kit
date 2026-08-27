@@ -59,4 +59,45 @@ jobs:
             git tag -s -m "${TAG}" "${TAG}"
             git push origin "refs/tags/${TAG}"
           fi
-          npm publish --access public
+          if npm view "@ironwallet/mcp-server@${VERSION}" version >/dev/null 2>&1; then
+            echo "npm ${VERSION} already published"
+          else
+            npm publish --access public
+          fi
+      - name: GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          NOTES_SCRIPT="${GITHUB_WORKSPACE}/.github/scripts/changelog-section.cjs"
+          CHANGELOG="${GITHUB_WORKSPACE}/CHANGELOG.md"
+          while IFS= read -r TAG; do
+            [ -n "${TAG}" ] || continue
+            VERSION="${TAG#v}"
+            if gh release view "${TAG}" >/dev/null 2>&1; then
+              echo "release ${TAG} already exists"
+              continue
+            fi
+            TARBALL_URL="https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${TAG}.tar.gz"
+            SHA256="$(curl -fsSL "${TARBALL_URL}" | sha256sum | awk '{print $1}')"
+            {
+              node "${NOTES_SCRIPT}" "${VERSION}" "${CHANGELOG}"
+              printf '\n## Artifacts\n\n- Source tarball: %s\n- SHA256: `%s`\n' "${TARBALL_URL}" "${SHA256}"
+            } > /tmp/release-notes.md
+            gh release create "${TAG}" --title "${TAG}" --notes-file /tmp/release-notes.md
+            echo "created release ${TAG}"
+          done < <(git tag -l 'v[0-9]*' | sort -V)
+      - name: Publish to MCP Registry
+        continue-on-error: true
+        working-directory: packages/mcp-server
+        env:
+          MCP_PRIVATE_KEY: ${{ secrets.MCP_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MCP_PRIVATE_KEY:-}" ]; then
+            echo "MCP_PRIVATE_KEY is not set; skip MCP registry publish"
+            exit 0
+          fi
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          ./mcp-publisher login dns --domain ironwallet.io --private-key "${MCP_PRIVATE_KEY}"
+          ./mcp-publisher publish

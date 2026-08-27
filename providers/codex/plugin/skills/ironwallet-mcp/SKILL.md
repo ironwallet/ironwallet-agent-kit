@@ -48,7 +48,17 @@ confirmation UI**. Prefer a dedicated hot wallet with limited balance.
 3. Do not invent secrets. Do not put keys into MCP config. On first launch the
    server creates what it needs under `~/.ironwallet-mcp/`. The user-facing
    backup is the recovery phrase in the wallet manager.
-4. If there is no wallet yet, `create_wallets` or `open_wallet_manager` first.
+4. MCP consent. Before `create_wallets` or a manager import, the user must
+   accept the current disclaimer. Call `create_wallets` (or
+   `open_wallet_manager`) first — if the response has `needs_consent`, show
+   **the full** `consent` text in chat (title, lead, every bullet, checkbox
+   line). Do not shorten it. Wait for an explicit confirmation, then call
+   `accept_mcp_consent` with `accepted=true`, **or** ask them to Continue in
+   the manager (`manager_url`). Only then create or import. Cancel means stop
+   and do not write consent. This disclaimer is required; do not invent extra
+   confirmations on each later send or swap.
+5. If there is no wallet yet and consent is already recorded,
+   `create_wallets` or `open_wallet_manager`.
 
 ## Tools
 
@@ -56,8 +66,10 @@ confirmation UI**. Prefer a dedicated hot wallet with limited balance.
 | Tool | Purpose | Moves funds? |
 |------|---------|:------------:|
 | `list_wallets` | Names, addresses, and `policy` | no |
+| `accept_mcp_consent` | Record chat acceptance of the MCP disclaimer | no |
 | `create_wallets` | New wallets; returns a browser `backup_url` | no |
 | `open_wallet_manager` | Local browser UI to import / create / back up | no |
+| `set_wallet_policy` | Replace per-wallet limits (`readOnly`, `maxPerTxUsd`, allow-list) | no |
 | `get_deposit_qr` | PNG QR (try chat; else local `qr_url`) | no |
 | `get_balance` | Native or token balance | no |
 | `estimate_transfer` | Fee estimate, no broadcast | no |
@@ -76,16 +88,34 @@ No tool accepts or returns a seed. Import and backup only in the local browser.
 
 - List: `list_wallets` — each wallet always includes `policy`
   (`{ enabled: false }` when unset). If `enabled` is true, check `readOnly`,
-  `maxPerTx`, and `allowedRecipients` before sending or swapping. `readOnly`
-  blocks both. A recipient allow-list also blocks swaps (the router is not
-  on that list).
+  `maxPerTxUsd`, and `allowedRecipients` before sending or swapping. `readOnly`
+  blocks both. The recipient allow-list applies to transfers.
 - Deposit QR: `get_deposit_qr` (pass `network` for one chain). The PNG is
   generated on the fly and attached as an image; also each item has `qr_url`.
   Show the image in chat when the host renders it. If the user cannot see the
   QR, open `qr_url` in the local browser and write the address in the reply.
   Do not say the QR is “above” unless they can see it.
-- Create: `create_wallets` → open `backup_url` in a browser to back up the phrase
-- Import / backup: `open_wallet_manager`
+- Create: `create_wallets` (blocked until MCP consent) → open `backup_url`
+  in a browser to back up the phrase
+- Import / backup: `open_wallet_manager` (same consent screen if not accepted)
+
+## Limits (`set_wallet_policy`)
+
+Change limits **only when the user explicitly asks**. Do not enable a policy
+"just in case" — the default (no limits) is intentional.
+
+- The write is a **full replace**, not a patch. Read the current
+  `list_wallets.policy` first, build the complete object, then call
+  `set_wallet_policy`. An omitted field is removed.
+- Fields: `readOnly` (blocks send and swap), `maxPerTxUsd` (max USD value per
+  send/swap, decimal string like `"50"`), `allowedRecipients` (transfer
+  allow-list). `enabled: false` removes everything.
+- Side effects to explain: the allow-list applies to `send_transfer`;
+  `maxPerTxUsd` is converted at the moment of each operation using IronWallet
+  backend rates, and if no rate is available the operation is
+  **rejected** (fail closed).
+- Do not invent fields beyond these three. After writing, show the resulting
+  policy back to the user.
 
 ## Transfer
 
@@ -115,7 +145,9 @@ Swaps are a separate flow from transfers.
 ## Safety
 
 - Never print recovery phrases or private keys. Never ask for a seed in chat.
-- Do not invent extra confirmation modals. Chat intent authorizes send/swap.
+- The MCP disclaimer in chat (or the manager) is required before create/import.
+  Do not invent extra confirmation modals on send/swap. Chat intent authorizes
+  those after consent is on file.
 - Optional wallet policy lives on `list_wallets.policy`. Do not invent extra
   caps beyond that. The server still rejects a violating send/swap.
 - `IW_READ_ONLY=true` blocks `send_transfer` and `execute_swap` for the whole

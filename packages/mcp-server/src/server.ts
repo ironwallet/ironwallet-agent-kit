@@ -15,10 +15,11 @@ export async function serve(): Promise<void> {
   const instructions = [
     "Non-custodial IronWallet. Seed phrases stay encrypted on the host and never leave this machine. The agent can retrieve balances, sign locally, transfer tokens, and swap across 10+ networks. There is no extra confirmation UI. Prefer a dedicated wallet with limited balance.",
     "Never print, request, or invent recovery phrases or private keys. No tool accepts or returns a seed. Create/import/backup only via create_wallets backup_url or open_wallet_manager in the local browser.",
-    "If there is no wallet yet, create_wallets or open_wallet_manager first.",
+    "Before create_wallets or import, the user must accept the MCP disclaimer (accept_mcp_consent after showing the full text in chat, or the local wallet manager). If create_wallets returns needs_consent, show consent in full and stop.",
     "Deposit QR: get_deposit_qr (pass network for one chain). Try to show the PNG in chat. If the host does not render it, open qr_url in the local browser and give the address. The wallet manager also has a QR button next to each address.",
     "Transfer: list_wallets / get_balance → estimate_transfer (optional) → send_transfer. On timeout poll get_operation_status; do not resubmit blindly. send_transfer may reduce the amount so the fee fits.",
     "Swap: list_swap_networks → list_swap_assets (copy network/symbol/address/decimals from the catalog; do not invent token addresses; omit address only for native coins) → estimate_swap or execute_swap. Quotes expire. maxMode: true sells as much as the service allows. After execute, poll get_swap_status; if execute times out, poll before retrying.",
+    "Limits: read list_wallets.policy before send/swap. Change it only when the user explicitly asks, via set_wallet_policy (full replace — read the current policy first). maxPerTxUsd is valued at operation time; if no USD rate is available the operation is rejected. The recipient allow-list applies to transfers.",
   ];
   if (cfg.readOnly) {
     instructions.push(

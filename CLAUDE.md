@@ -16,9 +16,9 @@ Product page: https://ironwallet.io/ai
 ## Safety
 
 - Never print, request, or invent recovery phrases or private keys.
-- Create / import / backup only via `create_wallets` (`backup_url`) or `open_wallet_manager` in the local browser.
+- Create / import / backup only via `create_wallets` (`backup_url`) or `open_wallet_manager` in the local browser. Create and import require current MCP consent (`accept_mcp_consent` after the full disclaimer in chat, or Continue in the manager).
 - Chat intent authorizes send and swap (irreversible once broadcast). Prefer a dedicated hot wallet with limited balance.
-- Read `list_wallets.policy` before sending. `{ enabled: false }` means no extra limits. `IW_READ_ONLY=true` blocks send and swap for the whole server.
+- Read `list_wallets.policy` before sending. `{ enabled: false }` means no extra limits. Change limits only via `set_wallet_policy` when the user asks (full replace; `maxPerTxUsd` fails closed without a rate). `IW_READ_ONLY=true` blocks send and swap for the whole server.
 - Timeout is not failure: poll `get_operation_status` / `get_swap_status`. Do not resubmit blindly.
 
 ## How to operate

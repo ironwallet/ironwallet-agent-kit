@@ -108,6 +108,10 @@ export interface Config {
   relayUrl: string;
   /** Swap API host (`/swp/exchange/*`, `/swp/refs/*`). */
   swapProxyUrl: string;
+  /** Rates API host (`/api/v1/rate/rates`). Used only for USD policy limits. */
+  ratesApiUrl: string;
+  /** Static resources base with asset catalogs (`/assets/main/blockchains/...`). */
+  staticResourcesUrl: string;
   /** Optional relay API key (x-api-key). Empty string means header is omitted. */
   relayApiKey: string;
   /** App version string sent as x-iwt-cli / X-App-Version. */
@@ -228,6 +232,10 @@ export function getConfig(): Config {
     authUrl: envOr("IW_AUTH_URL", profile.authUrl),
     relayUrl: envOr("IW_RELAY_URL", profile.relayUrl),
     swapProxyUrl: envOr("IW_SWAP_PROXY_URL", profile.swapProxyUrl),
+    // Hosts live only in the baked configurations profile (no fallbacks in
+    // code). Empty string means USD policy limits fail closed.
+    ratesApiUrl: envOr("IW_RATES_API_URL", profile.ratesApiUrl ?? ""),
+    staticResourcesUrl: envOr("IW_STATIC_RESOURCES_URL", profile.staticResourcesUrl ?? ""),
     relayApiKey: resolveRelayApiKey(),
     appVersion: envOr("IW_APP_VERSION", `ironwallet-mcp/${packageVersion()}`),
     deviceId,

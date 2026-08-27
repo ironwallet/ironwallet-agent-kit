@@ -84,8 +84,10 @@ Manually installed MCP does **not** auto-update with the plugin.
 | Tool | Purpose | Moves funds? |
 |------|---------|:------------:|
 | `list_wallets` | Names, addresses, and `policy` | no |
+| `accept_mcp_consent` | Record chat acceptance of the MCP disclaimer | no |
 | `create_wallets` | New wallets; returns a browser `backup_url` | no |
 | `open_wallet_manager` | Local browser UI to import / create / back up | no |
+| `set_wallet_policy` | Replace per-wallet limits (`readOnly`, `maxPerTxUsd`, allow-list) | no |
 | `get_deposit_qr` | PNG QR (try chat; else local `qr_url`) | no |
 | `get_balance` | Native or token balance | no |
 | `estimate_transfer` | Fee estimate, no broadcast | no |
@@ -109,7 +111,7 @@ The user-facing backup is the **recovery phrase** in the wallet manager, not tho
 ## Security
 
 - Seeds are encrypted at rest. They never appear in tool results, agent chat, or backend requests.
-- The agent **can move funds without asking again**. Optional wallet policy (`readOnly`, `maxPerTx`, transfer recipient allow-list) is off by default and applies to both sends and swaps.
+- The agent **can move funds without asking again**. Optional wallet policy (`readOnly`, `maxPerTxUsd`, transfer recipient allow-list — set via `set_wallet_policy`) is off by default and applies to both sends and swaps.
 - Anyone with the keystore **and** the wrapping secret controls the funds. A leaked seed cannot be revoked.
 - Timeout is not always failure: poll status before retrying a send or swap.
 - **Do not** put a main wallet here. Use a small hot wallet.

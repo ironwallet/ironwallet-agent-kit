@@ -18,8 +18,10 @@ Product page: [ironwallet.io/ai](https://ironwallet.io/ai)
 | Tool | Purpose | Moves funds? |
 |------|---------|:------------:|
 | `list_wallets` | Names, addresses, and `policy` | no |
+| `accept_mcp_consent` | Record chat acceptance of the MCP disclaimer | no |
 | `create_wallets` | New wallets; returns a browser `backup_url` | no |
 | `open_wallet_manager` | Local browser UI to import / create / back up | no |
+| `set_wallet_policy` | Replace per-wallet limits (`readOnly`, `maxPerTxUsd`, allow-list) | no |
 | `get_deposit_qr` | PNG QR (try chat; else local `qr_url`) | no |
 | `get_balance` | Native or token balance | no |
 | `estimate_transfer` | Fee estimate, no broadcast | no |

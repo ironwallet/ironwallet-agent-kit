@@ -3,6 +3,10 @@ export interface BakedEnvProfile {
   authUrl: string;
   relayUrl: string;
   swapProxyUrl: string;
+  /** Rates API host (`/api/v1/rate/*`). Optional until configurations ships it. */
+  ratesApiUrl?: string;
+  /** Static resources base for asset catalogs (`/assets/main/blockchains/...`). */
+  staticResourcesUrl?: string;
   evmRpcUrls: Record<string, string>;
   tronApiUrl: string;
   bitcoinApiUrl: string;

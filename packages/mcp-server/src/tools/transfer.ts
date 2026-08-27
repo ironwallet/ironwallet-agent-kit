@@ -10,7 +10,7 @@ import { getBalance } from "../api/balances.js";
 import { parseUnits, formatUnits } from "ethers";
 import { signForward } from "../signing/index.js";
 import { tonPublicKeyHex } from "../signing/ton.js";
-import { enforcePolicy } from "../policy.js";
+import { enforcePolicy, enforceUsdLimit } from "../policy.js";
 import { logInfo, logWarn } from "../log.js";
 import { mcpToolConfig, toolDefinition } from "./definitions.js";
 import type { ToolHelpers } from "./helpers.js";
@@ -272,7 +272,15 @@ export function registerTransferTools(server: McpServer, helpers: ToolHelpers): 
             kind: "transfer",
             network,
             toAddress: to,
+          });
+
+          await enforceUsdLimit(entry, {
+            kind: "transfer",
+            network,
             amount: resolved.amount,
+            symbol: resolved.symbol,
+            tokenAddress,
+            correlationId,
           });
 
           const params = {

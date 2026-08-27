@@ -4,7 +4,8 @@ alwaysApply: false
 ---
 
 The limiter is the wallet balance, plus optional `list_wallets.policy` when
-`enabled` is true (`readOnly`, `maxPerTx`, recipient allow-list). Process-wide
+`enabled` is true (`readOnly`, `maxPerTxUsd`, recipient allow-list). Change it
+only via `set_wallet_policy` when the user explicitly asks. Process-wide
 `IW_READ_ONLY` also blocks `send_transfer` and `execute_swap`. Prefer a
 dedicated hot wallet with limited funds. The agent may send and swap without
 a per-transaction confirmation UI; those calls are irreversible once

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-08-27
+
+### Added
+
+- MCP consent before create/import: full English disclaimer in chat (`accept_mcp_consent`) or the local wallet manager.
+- `set_wallet_policy` tool: per-wallet limits from chat (`readOnly`, `maxPerTxUsd`, transfer recipient allow-list; full replace).
+- USD per-transaction limit (`maxPerTxUsd`): send/swap amounts are valued via the IronWallet rates backend at operation time and rejected when no rate is available (fail closed). Replaces the never-exposed asset-unit `maxPerTx`.
+
+### Changed
+
+- Consent copy: limits are described as chat-configurable (`set_wallet_policy`), not as a pre-use setup step in the wallet manager.
+
 ## [1.0.2] - 2026-08-26
 
 ### Added
@@ -39,7 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Release of the IronWallet agent kit and `@ironwallet/mcp-server`.
 
-[Unreleased]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/ironwallet/ironwallet-agent-kit/releases/tag/v1.0.0

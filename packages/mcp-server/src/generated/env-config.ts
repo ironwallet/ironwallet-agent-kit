@@ -23,5 +23,7 @@ export const BAKED_ENV: BakedEnvProfile = {
   "solanaRpcUrl": "https://api.mainnet-beta.solana.com",
   "tonApiUrl": "https://toncenter.com/api/v2",
   "xrpRpcUrl": "https://xrplcluster.com",
-  "bitcoinTestnet": false
+  "bitcoinTestnet": false,
+  "ratesApiUrl": "https://rates.iwio.app",
+  "staticResourcesUrl": "https://resources.iwio.app/Ironwallet"
 } as const;

@@ -1,7 +1,7 @@
 {
   "package": "@ironwallet/mcp-server",
   "mcpName": "io.ironwallet/mcp-server",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "tools": [
     {
       "name": "list_wallets",
@@ -16,9 +16,29 @@
       }
     },
     {
+      "name": "accept_mcp_consent",
+      "title": "Accept MCP consent",
+      "description": "Record that the user accepted the MCP risk disclaimer in chat. Call only after showing the full consent text (from a previous create_wallets needs_consent response, or the skill) and the user explicitly confirms. Does not create a wallet. accepted must be true.",
+      "purpose": "Record chat acceptance of the MCP disclaimer",
+      "movesFunds": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "description": "Must be true after the user confirmed they understand the risks."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "accepted"
+        ]
+      }
+    },
+    {
       "name": "create_wallets",
       "title": "Create wallets",
-      "description": "Generate one or more brand-new wallets (BIP-39). Returns names and addresses only. Seed phrases are NOT returned to the agent. The response includes a local browser URL where the user can view and back up the recovery phrases.",
+      "description": "Generate one or more brand-new wallets (BIP-39). Requires a current MCP consent (accept_mcp_consent in chat, or the local wallet manager). Returns names and addresses only. Seed phrases are NOT returned to the agent. The response includes a local browser URL where the user can view and back up the recovery phrases. If consent is missing, returns needs_consent and the full disclaimer instead of creating wallets.",
       "purpose": "New wallets; returns a browser `backup_url`",
       "movesFunds": false,
       "inputSchema": {
@@ -51,6 +71,45 @@
         "type": "object",
         "properties": {},
         "additionalProperties": false
+      }
+    },
+    {
+      "name": "set_wallet_policy",
+      "title": "Set wallet policy",
+      "description": "Replace the spending policy of a wallet (chat intent is the authorization; no extra confirmation). FULL REPLACE, not a patch: read list_wallets first and pass every field you want to keep. enabled=false removes all limits. readOnly blocks send_transfer and execute_swap. maxPerTxUsd caps each send/swap by USD value at the moment of the operation (rate from the IronWallet backend; if the rate is unavailable the operation is rejected — fail closed). allowedRecipients applies to send_transfer destinations. Use only when the user explicitly asks to change limits.",
+      "purpose": "Replace per-wallet limits (`readOnly`, `maxPerTxUsd`, allow-list)",
+      "movesFunds": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "type": "string",
+            "description": "Wallet name. Optional if only one exists."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "false removes all limits; true enforces the fields below."
+          },
+          "readOnly": {
+            "type": "boolean",
+            "description": "Block send_transfer and execute_swap for this wallet."
+          },
+          "maxPerTxUsd": {
+            "type": "string",
+            "description": "Max USD value per send/swap as a decimal string, e.g. \"50\". Checked at operation time; rejected if no rate is available."
+          },
+          "allowedRecipients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Transfer destination allow-list."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "enabled"
+        ]
       }
     },
     {

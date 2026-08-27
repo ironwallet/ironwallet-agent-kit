@@ -20,7 +20,7 @@ import {
   type SwapSide,
 } from "../api/swap.js";
 import { signSwapTransactions } from "../signing/swap.js";
-import { enforcePolicy } from "../policy.js";
+import { enforcePolicy, enforceUsdLimit } from "../policy.js";
 import { logInfo } from "../log.js";
 import {
   mcpToolConfig,
@@ -372,10 +372,13 @@ export function registerSwapTools(server: McpServer, helpers: ToolHelpers): void
           const corrected =
             est.correctedAmountFrom ?? est.from.amount ?? prep.sellAmount;
 
-          enforcePolicy(prep.entry, {
+          await enforceUsdLimit(prep.entry, {
             kind: "swap",
             network: prep.sell.networkId,
             amount: corrected,
+            symbol: prep.fromSide.asset.symbol,
+            tokenAddress: prep.fromSide.asset.address ?? undefined,
+            correlationId,
           });
 
           const createFrom: SwapSide = {

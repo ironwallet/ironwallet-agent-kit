@@ -47,10 +47,23 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     inputSchema: {},
   },
   {
+    name: "accept_mcp_consent",
+    title: "Accept MCP consent",
+    description:
+      "Record that the user accepted the MCP risk disclaimer in chat. Call only after showing the full consent text (from a previous create_wallets needs_consent response, or the skill) and the user explicitly confirms. Does not create a wallet. accepted must be true.",
+    purpose: "Record chat acceptance of the MCP disclaimer",
+    movesFunds: false,
+    inputSchema: {
+      accepted: z
+        .boolean()
+        .describe("Must be true after the user confirmed they understand the risks."),
+    },
+  },
+  {
     name: "create_wallets",
     title: "Create wallets",
     description:
-      "Generate one or more brand-new wallets (BIP-39). Returns names and addresses only. Seed phrases are NOT returned to the agent. The response includes a local browser URL where the user can view and back up the recovery phrases.",
+      "Generate one or more brand-new wallets (BIP-39). Requires a current MCP consent (accept_mcp_consent in chat, or the local wallet manager). Returns names and addresses only. Seed phrases are NOT returned to the agent. The response includes a local browser URL where the user can view and back up the recovery phrases. If consent is missing, returns needs_consent and the full disclaimer instead of creating wallets.",
     purpose: "New wallets; returns a browser `backup_url`",
     movesFunds: false,
     inputSchema: {
@@ -69,6 +82,36 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     purpose: "Local browser UI to import / create / back up",
     movesFunds: false,
     inputSchema: {},
+  },
+  {
+    name: "set_wallet_policy",
+    title: "Set wallet policy",
+    description:
+      "Replace the spending policy of a wallet (chat intent is the authorization; no extra confirmation). FULL REPLACE, not a patch: read list_wallets first and pass every field you want to keep. enabled=false removes all limits. readOnly blocks send_transfer and execute_swap. maxPerTxUsd caps each send/swap by USD value at the moment of the operation (rate from the IronWallet backend; if the rate is unavailable the operation is rejected — fail closed). allowedRecipients applies to send_transfer destinations. Use only when the user explicitly asks to change limits.",
+    purpose: "Replace per-wallet limits (`readOnly`, `maxPerTxUsd`, allow-list)",
+    movesFunds: false,
+    inputSchema: {
+      wallet: z.string().optional().describe("Wallet name. Optional if only one exists."),
+      enabled: z
+        .boolean()
+        .describe("false removes all limits; true enforces the fields below."),
+      readOnly: z
+        .boolean()
+        .optional()
+        .describe("Block send_transfer and execute_swap for this wallet."),
+      maxPerTxUsd: z
+        .string()
+        .optional()
+        .describe(
+          "Max USD value per send/swap as a decimal string, e.g. \"50\". Checked at operation time; rejected if no rate is available.",
+        ),
+      allowedRecipients: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Transfer destination allow-list.",
+        ),
+    },
   },
   {
     name: "get_deposit_qr",

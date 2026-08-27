@@ -63,7 +63,7 @@ The mnemonic never appears in tool inputs/outputs, logs meant for the agent, or 
 | **Balances** | Native coins and tokens |
 | **Transfers** | Fee estimate and send through IronWallet’s transfer relay |
 | **Swaps** | Quotes and execution through IronWallet |
-| **Policy** | Optional per-wallet limits (`readOnly`, `maxPerTx`, transfer recipient allow-list). Applies to `send_transfer` and `execute_swap`. |
+| **Policy** | Optional per-wallet limits (`readOnly`, `maxPerTxUsd`, transfer recipient allow-list) set via `set_wallet_policy`. Applies to `send_transfer` and `execute_swap`. |
 
 ---
 
@@ -73,8 +73,10 @@ The mnemonic never appears in tool inputs/outputs, logs meant for the agent, or 
 | Tool | Purpose | Moves funds? |
 |------|---------|:------------:|
 | `list_wallets` | Names, addresses, and `policy` | no |
+| `accept_mcp_consent` | Record chat acceptance of the MCP disclaimer | no |
 | `create_wallets` | New wallets; returns a browser `backup_url` | no |
 | `open_wallet_manager` | Local browser UI to import / create / back up | no |
+| `set_wallet_policy` | Replace per-wallet limits (`readOnly`, `maxPerTxUsd`, allow-list) | no |
 | `get_deposit_qr` | PNG QR (try chat; else local `qr_url`) | no |
 | `get_balance` | Native or token balance | no |
 | `estimate_transfer` | Fee estimate, no broadcast | no |
@@ -125,7 +127,7 @@ Swaps are a separate flow from transfers.
 **Operational notes**
 
 - Quotes expire. Prefer `execute_swap` (fresh quote). If execute times out, **poll status** before retrying — do not blindly re-run execute.
-- Wallet policy: `readOnly` blocks sends and swaps. `maxPerTx` applies to the transfer amount or the corrected swap sell amount. A transfer recipient allow-list also blocks swaps (the swap router is not a whitelisted destination).
+- Wallet policy: `readOnly` blocks sends and swaps. `maxPerTxUsd` values the transfer amount (or the corrected swap sell amount) in USD at operation time via IronWallet backend rates; when no rate is available the operation is rejected (fail closed). The recipient allow-list applies to `send_transfer`. `set_wallet_policy` replaces the whole policy — read `list_wallets.policy` first.
 
 ---
 
@@ -142,6 +144,8 @@ The user-facing backup is the **recovery phrase** in the wallet manager, not tho
 | `IW_RELAY_API_KEY` | generated UUID | Override `x-api-key` |
 | `IW_DEVICE_ID` | generated UUID | Override `X-Device-Id` (stable per keystore directory) |
 | `IW_KEYSTORE_DIR` | `~/.ironwallet-mcp` | Keystore directory |
+| `IW_RATES_API_URL` | baked profile | Rates backend for `maxPerTxUsd` valuation. Unset in the profile → USD limits reject (fail closed) |
+| `IW_STATIC_RESOURCES_URL` | baked profile | Static asset catalogs (token → rates id) |
 | `IW_HTTP_TIMEOUT_MS` | `15000` | General HTTP timeout (1s–120s) |
 | `IW_HTTP_FORWARD_TIMEOUT_MS` | `60000` | Longer timeout for broadcast-style calls. A client timeout does not always mean the operation failed — check status |
 | `IW_HTTP_RETRIES` | `2` | Retries for safe/idempotent calls; broadcasts are not auto-retried |
@@ -155,7 +159,7 @@ The user-facing backup is the **recovery phrase** in the wallet manager, not tho
 ## Security
 
 - Seeds are encrypted at rest. They never appear in tool results, agent chat, or backend requests.
-- The agent **can move funds without asking again**. Optional wallet policy (`readOnly`, `maxPerTx`, transfer recipient allow-list) is off by default and applies to both `send_transfer` and `execute_swap`.
+- The agent **can move funds without asking again**. Optional wallet policy (`readOnly`, `maxPerTxUsd`, transfer recipient allow-list — set via `set_wallet_policy`) is off by default and applies to both `send_transfer` and `execute_swap`.
 - Anyone with the keystore **and** the wrapping secret controls the funds. A leaked seed cannot be revoked.
 - Timeout is not always failure: poll status before retrying a send or swap.
 - Desktop / stdio only. A phone or remote agent would need a design where signing stays on a trusted device.

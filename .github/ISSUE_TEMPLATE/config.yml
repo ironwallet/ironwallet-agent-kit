@@ -5,7 +5,7 @@ contact_links:
     about: Do not file public issues for security bugs. See SECURITY.md.
   - name: Product page
     url: https://ironwallet.io/ai
-    about: Install Ironwallet for AI agents.
+    about: Install IronWallet for AI agents.
   - name: Terms and conditions
     url: https://ironwallet.io/terms-and-conditions/
     about: Product terms (INWAY AG). Not filed as a GitHub issue.

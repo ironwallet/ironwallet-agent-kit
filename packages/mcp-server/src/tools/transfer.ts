@@ -3,7 +3,6 @@
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 import { assertServerWritable, canSend, type NetworkId } from "../config.js";
 import { resolveEntry } from "../keystore/store.js";
 import { estimate, forward, operationState, type SignedEstimate } from "../api/relay.js";
@@ -13,7 +12,8 @@ import { signForward } from "../signing/index.js";
 import { tonPublicKeyHex } from "../signing/ton.js";
 import { enforcePolicy } from "../policy.js";
 import { logInfo, logWarn } from "../log.js";
-import { networkEnum, type ToolHelpers } from "./helpers.js";
+import { mcpToolConfig, toolDefinition } from "./definitions.js";
+import type { ToolHelpers } from "./helpers.js";
 
 interface ResolvedAmount {
   est: SignedEstimate;
@@ -179,19 +179,7 @@ export function registerTransferTools(server: McpServer, helpers: ToolHelpers): 
 
   server.registerTool(
     "get_balance",
-    {
-      title: "Get balance",
-      description:
-        "Get the balance for a wallet on a network. Optionally pass a token contract address; omit for the native coin.",
-      inputSchema: {
-        wallet: z.string().optional().describe("Wallet name. Optional if only one exists."),
-        network: networkEnum,
-        tokenAddress: z
-          .string()
-          .optional()
-          .describe("Token contract address. Omit for the native coin."),
-      },
-    },
+    mcpToolConfig(toolDefinition("get_balance")),
     async ({ wallet, network, tokenAddress }) =>
       withToolLog("get_balance", { wallet, network, tokenAddress }, async ({ correlationId }) => {
         const entry = resolveEntry(wallet);
@@ -206,22 +194,7 @@ export function registerTransferTools(server: McpServer, helpers: ToolHelpers): 
 
   server.registerTool(
     "estimate_transfer",
-    {
-      title: "Estimate transfer",
-      description:
-        "Estimate fees for a transfer without sending. Returns fees and the number of transactions that would be signed.",
-      inputSchema: {
-        wallet: z.string().optional(),
-        network: networkEnum,
-        to: z.string().describe("Recipient address."),
-        amount: z.string().describe("Amount in asset units (decimal string)."),
-        tokenAddress: z
-          .string()
-          .optional()
-          .describe("Token contract address. Omit for the native coin."),
-        memo: z.string().optional(),
-      },
-    },
+    mcpToolConfig(toolDefinition("estimate_transfer")),
     async ({ wallet, network, to, amount, tokenAddress, memo }) =>
       withToolLog(
         "estimate_transfer",
@@ -261,22 +234,7 @@ export function registerTransferTools(server: McpServer, helpers: ToolHelpers): 
 
   server.registerTool(
     "send_transfer",
-    {
-      title: "Send transfer",
-      description:
-        "Send a transfer: sign locally with the wallet's key and broadcast via the Ironwallet forward relay (estimate -> sign -> forward) for EVM, Tron, Bitcoin, Litecoin, Doge, Solana, XRP and TON. Irreversible once broadcast — no second confirmation. Returns the transaction hash (and operation id where applicable).",
-      inputSchema: {
-        wallet: z.string().optional(),
-        network: networkEnum,
-        to: z.string().describe("Recipient address."),
-        amount: z.string().describe("Amount in asset units (decimal string)."),
-        tokenAddress: z
-          .string()
-          .optional()
-          .describe("Token contract address. Omit for the native coin."),
-        memo: z.string().optional(),
-      },
-    },
+    mcpToolConfig(toolDefinition("send_transfer")),
     async ({ wallet, network, to, amount, tokenAddress, memo }) =>
       withToolLog(
         "send_transfer",
@@ -377,15 +335,7 @@ export function registerTransferTools(server: McpServer, helpers: ToolHelpers): 
 
   server.registerTool(
     "get_operation_status",
-    {
-      title: "Get operation status",
-      description: "Poll the state of a forward operation by its operation id.",
-      inputSchema: {
-        wallet: z.string().optional(),
-        network: networkEnum,
-        operationId: z.string(),
-      },
-    },
+    mcpToolConfig(toolDefinition("get_operation_status")),
     async ({ wallet, network, operationId }) =>
       withToolLog(
         "get_operation_status",

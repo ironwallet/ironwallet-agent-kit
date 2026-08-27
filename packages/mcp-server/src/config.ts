@@ -6,9 +6,12 @@
  */
 
 import { readFileSync } from "node:fs";
+import { arch, release, type as osType } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BAKED_ENV } from "./generated/env-config.js";
+import { ALL_NETWORKS, EVM_NETWORKS, type NetworkId } from "./networks.js";
+import { resolveDeviceFingerprint } from "./device-fingerprint.js";
 import {
   resolveDeviceId,
   resolveKeystoreDir,
@@ -31,46 +34,8 @@ export function packageVersion(): string {
   }
 }
 
-/** Canonical network identifiers used across the server. */
-export type NetworkId =
-  | "ethereum"
-  | "bsc"
-  | "polygon"
-  | "base"
-  | "arbitrum"
-  | "optimism"
-  | "avalanche"
-  | "tron"
-  | "bitcoin"
-  | "litecoin"
-  | "doge"
-  | "solana"
-  | "ton"
-  | "xrp";
-
-/** Networks that share the secp256k1 EVM key and signing scheme. */
-export const EVM_NETWORKS: NetworkId[] = [
-  "ethereum",
-  "bsc",
-  "polygon",
-  "base",
-  "arbitrum",
-  "optimism",
-  "avalanche",
-];
-
-/** Non-EVM chains, each with its own curve / address scheme / node API. */
-export const NON_EVM_NETWORKS: NetworkId[] = [
-  "tron",
-  "bitcoin",
-  "litecoin",
-  "doge",
-  "solana",
-  "ton",
-  "xrp",
-];
-
-export const ALL_NETWORKS: NetworkId[] = [...EVM_NETWORKS, ...NON_EVM_NETWORKS];
+export type { NetworkId } from "./networks.js";
+export { ALL_NETWORKS, EVM_NETWORKS, NON_EVM_NETWORKS } from "./networks.js";
 
 /**
  * Networks advertised during challenge login. Kept to the proven EVM+Tron set:
@@ -82,7 +47,7 @@ export const AUTH_NETWORKS: NetworkId[] = [...EVM_NETWORKS, "tron"];
 
 /**
  * Networks whose transfer signing is implemented (send is allowed). All of these
- * go through the Ironwallet relay forward flow (estimate → sign → forward),
+ * go through the IronWallet relay forward flow (estimate → sign → forward),
  * including TON (IR-673 / mobile RelayV2).
  */
 export const SIGNABLE_NETWORKS: NetworkId[] = [...ALL_NETWORKS];
@@ -110,7 +75,7 @@ export function parseNetworkId(name: string): NetworkId | undefined {
 }
 
 export function isEvmNetwork(network: NetworkId): boolean {
-  return EVM_NETWORKS.includes(network);
+  return (EVM_NETWORKS as readonly NetworkId[]).includes(network);
 }
 
 /**
@@ -141,7 +106,7 @@ export function relaySegment(network: NetworkId): string {
 export interface Config {
   authUrl: string;
   relayUrl: string;
-  /** Swap Proxy host (`/swp/exchange/*`, `/swp/refs/*`). */
+  /** Swap API host (`/swp/exchange/*`, `/swp/refs/*`). */
   swapProxyUrl: string;
   /** Optional relay API key (x-api-key). Empty string means header is omitted. */
   relayApiKey: string;
@@ -149,11 +114,13 @@ export interface Config {
   appVersion: string;
   /** Device id sent as X-Device-Id. UUID file under the keystore dir unless overridden. */
   deviceId: string;
+  /** Machine fingerprint sent as X-Device-Fingerprint. OS install id + platform, or device-id if that id is missing. */
+  deviceFingerprint: string;
   /** X-Device-Locale value, format: TimeZone=..;Language=..;Region=..; */
   deviceLocale: string;
   /**
-   * JSON for `X-Device-Info`. Swap Proxy requires `systemName`
-   * (e.g. `{"systemName":"iOS","systemVersion":"17.0","model":"iPhone"}`).
+   * JSON for `X-Device-Info`. The swap API keys routing off `systemName`
+   * (`Web` here — this is a desktop MCP, not a phone).
    */
   deviceInfo: string;
   /** Directory holding the encrypted keystore. */
@@ -201,6 +168,35 @@ function envBool(key: string, fallback: boolean): boolean {
   return !/^(0|false|off|no)$/i.test(v);
 }
 
+/** Host-honest Web payload. Do not pretend to be iOS/Android. */
+export function defaultDeviceInfo(): string {
+  return JSON.stringify({
+    systemName: "Web",
+    systemVersion: packageVersion(),
+    model: "ironwallet-mcp",
+    platform: process.platform,
+    arch: arch(),
+    os: osType(),
+    osRelease: release(),
+  });
+}
+
+function defaultDeviceLocale(): string {
+  let timeZone = "UTC";
+  let language = "en";
+  let region = "US";
+  try {
+    const opts = Intl.DateTimeFormat().resolvedOptions();
+    if (opts.timeZone) timeZone = opts.timeZone;
+    const parts = (opts.locale ?? "").split(/[-_]/);
+    if (parts[0]) language = parts[0];
+    if (parts[1]) region = parts[1];
+  } catch {
+    // keep UTC/en/US
+  }
+  return `TimeZone=${timeZone};Language=${language};Region=${region};`;
+}
+
 /** Parse an integer env var, clamped to [min, max], falling back on invalid input. */
 function envInt(key: string, fallback: number, min: number, max: number): number {
   const raw = process.env[key];
@@ -226,6 +222,7 @@ let cached: Config | null = null;
 export function getConfig(): Config {
   if (cached) return cached;
   resolveKeystorePassphrase();
+  const deviceId = resolveDeviceId();
   const profile = BAKED_ENV;
   cached = {
     authUrl: envOr("IW_AUTH_URL", profile.authUrl),
@@ -233,16 +230,10 @@ export function getConfig(): Config {
     swapProxyUrl: envOr("IW_SWAP_PROXY_URL", profile.swapProxyUrl),
     relayApiKey: resolveRelayApiKey(),
     appVersion: envOr("IW_APP_VERSION", `ironwallet-mcp/${packageVersion()}`),
-    deviceId: resolveDeviceId(),
-    deviceLocale: envOr("IW_DEVICE_LOCALE", "TimeZone=UTC;Language=en;Region=US;"),
-    deviceInfo: envOr(
-      "IW_DEVICE_INFO",
-      JSON.stringify({
-        systemName: "iOS",
-        systemVersion: "17.0",
-        model: "iPhone",
-      }),
-    ),
+    deviceId,
+    deviceFingerprint: resolveDeviceFingerprint(deviceId),
+    deviceLocale: envOr("IW_DEVICE_LOCALE", defaultDeviceLocale()),
+    deviceInfo: envOr("IW_DEVICE_INFO", defaultDeviceInfo()),
     keystoreDir: resolveKeystoreDir(),
     evmRpcUrls: resolveEvmRpcUrls(profile.evmRpcUrls),
     tronApiUrl: envOr("IW_TRON_API", profile.tronApiUrl),
@@ -273,15 +264,16 @@ export function assertServerWritable(action: "send" | "swap"): void {
   );
 }
 
-/** Common device-mimicking headers sent to auth, relay, and Swap Proxy. */
+/** Device headers sent to auth, relay, and swap APIs. */
 export function commonHeaders(cfg: Config): Record<string, string> {
   const headers: Record<string, string> = {
     "x-iwt-cli": cfg.appVersion,
     "X-App-Version": cfg.appVersion,
     "X-Device-Id": cfg.deviceId,
+    "X-Device-Fingerprint": cfg.deviceFingerprint,
     // Backend validates the format: TimeZone=..;Language=..;Region=..;
     "X-Device-Locale": cfg.deviceLocale,
-    // SWP validates UserData.XDeviceInfo — JSON with required `systemName`.
+    // Swap routing reads UserData.XDeviceInfo.systemName (`Web` for this client).
     "X-Device-Info": cfg.deviceInfo,
     "Content-Language": "en",
   };

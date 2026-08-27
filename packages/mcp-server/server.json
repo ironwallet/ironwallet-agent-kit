@@ -1,0 +1,23 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.ironwallet/mcp-server",
+  "title": "IronWallet",
+  "description": "Non-custodial IronWallet MCP: local signing, balances, transfers, and swaps.",
+  "version": "1.0.2",
+  "websiteUrl": "https://ironwallet.io/ai",
+  "repository": {
+    "url": "https://github.com/ironwallet/ironwallet-agent-kit",
+    "source": "github",
+    "subfolder": "packages/mcp-server"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@ironwallet/mcp-server",
+      "version": "1.0.2",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

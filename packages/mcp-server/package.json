@@ -1,15 +1,38 @@
 {
   "name": "@ironwallet/mcp-server",
-  "version": "1.0.1",
+  "version": "1.0.2",
+  "mcpName": "io.ironwallet/mcp-server",
   "license": "MIT",
-  "description": "Non-custodial Ironwallet MCP: seeds stay encrypted on the host. Balances, local signing, transfers, and swaps across 10+ networks.",
+  "description": "Non-custodial IronWallet MCP: seeds stay encrypted on the host. Balances, local signing, transfers, and swaps across 10+ networks.",
+  "keywords": [
+    "wallet",
+    "crypto",
+    "mcp",
+    "swap",
+    "transfer",
+    "web3",
+    "ethereum",
+    "bsc",
+    "polygon",
+    "base",
+    "arbitrum",
+    "optimism",
+    "avalanche",
+    "tron",
+    "bitcoin",
+    "litecoin",
+    "dogecoin",
+    "solana",
+    "xrp",
+    "ton"
+  ],
   "homepage": "https://ironwallet.io/ai",
   "bugs": {
     "url": "https://github.com/ironwallet/ironwallet-agent-kit/issues",
     "email": "security@ironwallet.io"
   },
   "author": {
-    "name": "Ironwallet",
+    "name": "IronWallet",
     "email": "security@ironwallet.io",
     "url": "https://ironwallet.io"
   },
@@ -25,7 +48,7 @@
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
-    "test": "tsx --test src/qr/deposit-qr.test.ts",
+    "test": "tsx --test src/qr/deposit-qr.test.ts src/restrict-private-file.test.ts src/config.device-info.test.ts src/device-fingerprint.test.ts",
     "start": "node dist/cli.js",
     "dev": "tsx src/cli.ts",
     "prepack": "npm run build"
@@ -34,7 +57,9 @@
     "dist",
     "assets",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "server.json",
+    "tools.json"
   ],
   "engines": {
     "node": ">=20"

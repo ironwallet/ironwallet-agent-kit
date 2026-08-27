@@ -1,10 +1,10 @@
 # @ironwallet/mcp-server
 
-Local [MCP](https://modelcontextprotocol.io) server for **Ironwallet** (`ironwallet-mcp` bin).
+Local [MCP](https://modelcontextprotocol.io) server for **IronWallet** (`ironwallet-mcp` bin).
 
-The Ironwallet MCP server gives AI agents secure access to a **non-custodial** wallet. Seed phrases stay encrypted on the host and never leave this machine — they never pass through the agent. Agents can retrieve balances, sign locally, transfer tokens, and swap across 10+ networks.
+The IronWallet MCP server gives AI agents secure access to a **non-custodial** wallet. Seed phrases stay encrypted on the host and never leave this machine — they never pass through the agent. Agents can retrieve balances, sign locally, transfer tokens, and swap across 10+ networks.
 
-Seed-compatible with the [Ironwallet](https://ironwallet.io) app.
+Seed-compatible with the [IronWallet](https://ironwallet.io) app.
 
 There is no per-transaction confirmation UI.
 
@@ -47,7 +47,7 @@ The plugin install on [ironwallet.io/ai](https://ironwallet.io/ai) wires this up
 MCP client  →  ironwallet-mcp (stdio)
                     ├── encrypted keystore on disk
                     ├── signs on this machine
-                    └── HTTPS to Ironwallet backends
+                    └── HTTPS to IronWallet backends
 ```
 
 The mnemonic never appears in tool inputs/outputs, logs meant for the agent, or requests to backends / the LLM / the MCP client’s cloud.
@@ -61,14 +61,15 @@ The mnemonic never appears in tool inputs/outputs, logs meant for the agent, or 
 | **Networks** | Ethereum, BSC, Polygon, Base, Arbitrum, Optimism, Avalanche, Tron, Bitcoin, Litecoin, Dogecoin, Solana, XRP, TON |
 | **Wallets** | Create, import, list, deposit QR, and back up (local browser for secrets) |
 | **Balances** | Native coins and tokens |
-| **Transfers** | Fee estimate and send through Ironwallet’s transfer relay |
-| **Swaps** | Quotes and execution through Ironwallet **Swap Proxy** |
+| **Transfers** | Fee estimate and send through IronWallet’s transfer relay |
+| **Swaps** | Quotes and execution through IronWallet |
 | **Policy** | Optional per-wallet limits (`readOnly`, `maxPerTx`, transfer recipient allow-list). Applies to `send_transfer` and `execute_swap`. |
 
 ---
 
 ## Tools
 
+<!-- tools-table -->
 | Tool | Purpose | Moves funds? |
 |------|---------|:------------:|
 | `list_wallets` | Names, addresses, and `policy` | no |
@@ -84,6 +85,7 @@ The mnemonic never appears in tool inputs/outputs, logs meant for the agent, or 
 | `estimate_swap` | Quote (may expire) | no |
 | `execute_swap` | Fresh quote → sign → swap | **yes** |
 | `get_swap_status` | Poll a swap | no |
+<!-- /tools-table -->
 
 No tool accepts or returns a seed. Import and backup only in the local browser (`open_wallet_manager` / `backup_url`).
 
@@ -107,7 +109,7 @@ The browser page binds to `127.0.0.1` under an unguessable path and shuts down a
 
 ### Swaps
 
-Swaps use **Swap Proxy**, not the transfer relay.
+Swaps are a separate flow from transfers.
 
 1. `list_swap_networks`
 2. `list_swap_assets` (`direction=from`, then `direction=to` with the chosen sell asset)
@@ -129,7 +131,7 @@ Swaps use **Swap Proxy**, not the transfer relay.
 
 ## Configuration
 
-Nothing to paste into MCP config for normal use. On first launch the server writes a relay API key, keystore wrapping secret, and device id under `~/.ironwallet-mcp/` (`keystore-passphrase`, `relay-api-key`, `device-id`, mode `0600`). Set the env vars only to override.
+Nothing to paste into MCP config for normal use. On first launch the server writes a relay API key, keystore wrapping secret, and device id under `~/.ironwallet-mcp/` (`keystore-passphrase`, `relay-api-key`, `device-id`; owner-only POSIX `0600` or NTFS ACL on Windows). Set the env vars only to override.
 
 The user-facing backup is the **recovery phrase** in the wallet manager, not those files.
 

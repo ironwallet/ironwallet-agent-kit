@@ -1,5 +1,5 @@
 /**
- * BIP-39 / BIP-32 key derivation, seed-compatible with the Ironwallet mobile
+ * BIP-39 / BIP-32 key derivation, seed-compatible with the IronWallet mobile
  * app. The app always derives account 0, address index 0 (no HD account
  * switching), so we do the same. Multiple wallets = multiple mnemonics, not
  * multiple indices.

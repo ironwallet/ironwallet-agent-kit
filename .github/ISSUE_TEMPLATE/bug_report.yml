@@ -12,7 +12,7 @@ body:
     id: harness
     attributes:
       label: Harness
-      description: Where you run Ironwallet. Required so we can reproduce.
+      description: Where you run IronWallet. Required so we can reproduce.
       options:
         - Cursor
         - Claude Code

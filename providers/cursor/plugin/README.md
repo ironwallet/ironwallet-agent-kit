@@ -1,8 +1,8 @@
-# Ironwallet for Cursor
+# IronWallet for Cursor
 
-The Ironwallet MCP server gives Cursor secure access to a **non-custodial** wallet. Seed phrases stay encrypted on the host and never leave this machine. The agent can retrieve balances, sign locally, transfer tokens, and swap across 10+ networks.
+The IronWallet MCP server gives Cursor secure access to a **non-custodial** wallet. Seed phrases stay encrypted on the host and never leave this machine. The agent can retrieve balances, sign locally, transfer tokens, and swap across 10+ networks.
 
-Seed-compatible with the [Ironwallet](https://ironwallet.io) app. There is no per-transaction confirmation UI.
+Seed-compatible with the [IronWallet](https://ironwallet.io) app. There is no per-transaction confirmation UI.
 
 **Requirements:** Node.js 20+ (`npx`). Use a dedicated wallet with limited balance.
 
@@ -10,10 +10,11 @@ Product page: [ironwallet.io/ai](https://ironwallet.io/ai)
 
 ## Install
 
-[ironwallet.io/ai](https://ironwallet.io/ai), then enable the Ironwallet plugin. Reload so MCP picks up `PATH`.
+[ironwallet.io/ai](https://ironwallet.io/ai), then enable the IronWallet plugin. Reload so MCP picks up `PATH`.
 
 ## Tools
 
+<!-- tools-table -->
 | Tool | Purpose | Moves funds? |
 |------|---------|:------------:|
 | `list_wallets` | Names, addresses, and `policy` | no |
@@ -29,6 +30,7 @@ Product page: [ironwallet.io/ai](https://ironwallet.io/ai)
 | `estimate_swap` | Quote (may expire) | no |
 | `execute_swap` | Fresh quote → sign → swap | **yes** |
 | `get_swap_status` | Poll a swap | no |
+<!-- /tools-table -->
 
 No tool accepts or returns a seed. Import and backup only in the local browser (`open_wallet_manager` / `backup_url`).
 

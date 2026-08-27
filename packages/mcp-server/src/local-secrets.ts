@@ -1,21 +1,16 @@
 /**
  * Machine-local secrets and install identity. Generated on first use and stored
- * under the keystore directory (0600). Not written to User env, mcp.json, or
+ * under the keystore directory (owner-only). Not written to User env, mcp.json, or
  * the plugin dashboard.
  *
  * Env vars still win when set to a real value. Unexpanded `${VAR}` placeholders
  * (Claude Code when the shell var is missing) are treated as unset.
  */
 
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
+import { restrictPrivateFile } from "./restrict-private-file.js";
 
 const RELAY_KEY_FILE = "relay-api-key";
 const PASSPHRASE_FILE = "keystore-passphrase";
@@ -48,15 +43,11 @@ function readOrCreate(filename: string, generate: () => string): string {
   }
   const value = generate();
   writeFileSync(path, `${value}\n`, { mode: 0o600 });
-  try {
-    chmodSync(path, 0o600);
-  } catch {
-    // best effort on platforms without POSIX perms
-  }
+  restrictPrivateFile(path);
   return value;
 }
 
-/** x-api-key for Relay / Swap Proxy. UUID, stable per machine directory. */
+/** x-api-key for relay and swap APIs. UUID, stable per machine directory. */
 export function resolveRelayApiKey(): string {
   const fromEnv = process.env.IW_RELAY_API_KEY;
   if (!isUnsetSecret(fromEnv)) return fromEnv!.trim();

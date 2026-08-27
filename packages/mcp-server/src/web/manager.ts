@@ -75,7 +75,7 @@ async function readForm(req: IncomingMessage): Promise<Record<string, string>> {
 }
 
 /**
- * Visual language mirrors the Ironwallet mobile app (lib/themes):
+ * Visual language mirrors the IronWallet mobile app (lib/themes):
  *   - surfaces #FAFAFA / cards #FFFFFF, text #1B2028 / muted #9498A5,
  *   - signature UI gradient #3650AB → #2A81A6 (buttons, accents),
  *   - logo gradient #2C32BA → #0BB4EA (wordmark),
@@ -259,7 +259,7 @@ function layout(token: string, title: string, inner: string, showBack = true): s
 <title>${escapeHtml(title)}</title><style>${STYLE}</style></head><body>
 <div class="wrap">
 <div class="hero">
-  <img class="wordmark" src="/${token}/assets/wordmark.svg" alt="Ironwallet">
+  <img class="wordmark" src="/${token}/assets/wordmark.svg" alt="IronWallet">
   <img class="knight" src="/${token}/assets/knight.png" alt="" aria-hidden="true">
   <p class="hero-tag">Local wallet manager — keys never leave this machine</p>
 </div>
@@ -350,7 +350,7 @@ function dashboard(token: string, notice = ""): string {
 
   return layout(
     token,
-    "Ironwallet manager",
+    "IronWallet manager",
     `${notice}
 <div class="card">
   <h2>Your wallets</h2>

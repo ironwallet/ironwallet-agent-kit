@@ -1,7 +1,7 @@
 ---
 name: ironwallet-mcp
 description: >-
-  Non-custodial Ironwallet MCP: seed phrases stay encrypted on the host and
+  Non-custodial IronWallet MCP: seed phrases stay encrypted on the host and
   never leave this machine. Retrieve balances, sign locally, transfer tokens,
   and swap across 10+ networks; deposit QR via chat PNG or qr_url. Use when
   the user wants the agent to move funds they control, or to show a receive
@@ -9,7 +9,7 @@ description: >-
   missing, install Node 20+ so the MCP can start.
 ---
 
-# Ironwallet
+# IronWallet
 
 Non-custodial wallet for the agent. Seed phrases stay encrypted locally and
 never leave this machine. The agent can retrieve balances, sign locally,
@@ -21,7 +21,7 @@ confirmation UI**. Prefer a dedicated hot wallet with limited balance.
 - Check balances or addresses
 - Show a deposit QR for an address (PNG in chat, or `qr_url` if the host hides it)
 - Send / transfer on supported networks
-- Swap via Ironwallet Swap Proxy
+- Swap tokens
 - Create, import, or back up a wallet (seed stays in the local browser)
 
 ## Before calling tools
@@ -43,7 +43,7 @@ confirmation UI**. Prefer a dedicated hot wallet with limited balance.
      After a successful install, tell the user to **reload the editor** so
      `PATH` updates, then recheck `node -v`.
 2. Confirm the **ironwallet** MCP server is enabled. If it is missing after
-   Node works, tell the user to install the Ironwallet plugin (or add the MCP)
+   Node works, tell the user to install the IronWallet plugin (or add the MCP)
    and reload.
 3. Do not invent secrets. Do not put keys into MCP config. On first launch the
    server creates what it needs under `~/.ironwallet-mcp/`. The user-facing
@@ -52,21 +52,23 @@ confirmation UI**. Prefer a dedicated hot wallet with limited balance.
 
 ## Tools
 
-| Tool | Moves funds? |
-|------|:------------:|
-| `list_wallets` | no |
-| `create_wallets` | no (returns `backup_url` for the browser) |
-| `open_wallet_manager` | no |
-| `get_deposit_qr` | no |
-| `get_balance` | no |
-| `estimate_transfer` | no |
-| `send_transfer` | **yes** |
-| `get_operation_status` | no |
-| `list_swap_networks` | no |
-| `list_swap_assets` | no |
-| `estimate_swap` | no |
-| `execute_swap` | **yes** |
-| `get_swap_status` | no |
+<!-- tools-table -->
+| Tool | Purpose | Moves funds? |
+|------|---------|:------------:|
+| `list_wallets` | Names, addresses, and `policy` | no |
+| `create_wallets` | New wallets; returns a browser `backup_url` | no |
+| `open_wallet_manager` | Local browser UI to import / create / back up | no |
+| `get_deposit_qr` | PNG QR (try chat; else local `qr_url`) | no |
+| `get_balance` | Native or token balance | no |
+| `estimate_transfer` | Fee estimate, no broadcast | no |
+| `send_transfer` | Sign locally and send | **yes** |
+| `get_operation_status` | Poll a transfer | no |
+| `list_swap_networks` | Networks available for swap | no |
+| `list_swap_assets` | Sell / buy catalog | no |
+| `estimate_swap` | Quote (may expire) | no |
+| `execute_swap` | Fresh quote → sign → swap | **yes** |
+| `get_swap_status` | Poll a swap | no |
+<!-- /tools-table -->
 
 No tool accepts or returns a seed. Import and backup only in the local browser.
 
@@ -97,7 +99,7 @@ response says when that happened.
 
 ## Swap
 
-Swaps go through Swap Proxy, not the transfer relay.
+Swaps are a separate flow from transfers.
 
 1. `list_swap_networks`
 2. `list_swap_assets` (`direction=from`, then `direction=to`)

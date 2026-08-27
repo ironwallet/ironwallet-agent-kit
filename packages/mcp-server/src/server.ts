@@ -13,7 +13,7 @@ import { logStartupBanner } from "./log.js";
 export async function serve(): Promise<void> {
   const cfg = getConfig();
   const instructions = [
-    "Non-custodial Ironwallet. Seed phrases stay encrypted on the host and never leave this machine. The agent can retrieve balances, sign locally, transfer tokens, and swap across 10+ networks. There is no extra confirmation UI. Prefer a dedicated wallet with limited balance.",
+    "Non-custodial IronWallet. Seed phrases stay encrypted on the host and never leave this machine. The agent can retrieve balances, sign locally, transfer tokens, and swap across 10+ networks. There is no extra confirmation UI. Prefer a dedicated wallet with limited balance.",
     "Never print, request, or invent recovery phrases or private keys. No tool accepts or returns a seed. Create/import/backup only via create_wallets backup_url or open_wallet_manager in the local browser.",
     "If there is no wallet yet, create_wallets or open_wallet_manager first.",
     "Deposit QR: get_deposit_qr (pass network for one chain). Try to show the PNG in chat. If the host does not render it, open qr_url in the local browser and give the address. The wallet manager also has a QR button next to each address.",

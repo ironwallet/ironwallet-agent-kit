@@ -1,12 +1,12 @@
 # CLAUDE.md
 
-This repository is the Ironwallet agent kit. The MCP server (`@ironwallet/mcp-server`) gives agents a **non-custodial** hot wallet on this machine. Seed phrases stay encrypted on the host and never leave it. There is no per-transaction confirmation UI.
+This repository is the IronWallet agent kit. The MCP server (`@ironwallet/mcp-server`) gives agents a **non-custodial** hot wallet on this machine. Seed phrases stay encrypted on the host and never leave it. There is no per-transaction confirmation UI.
 
 Opening this folder should start the wallet MCP via [`.mcp.json`](.mcp.json) (`npx -y @ironwallet/mcp-server`). Needs **Node.js 20+**.
 
 ## What lives here
 
-- `packages/mcp-server` — stdio MCP: balances, transfers, Swap Proxy swaps, deposit QR
+- `packages/mcp-server` — stdio MCP: balances, transfers, swaps, deposit QR
 - `skills/ironwallet-mcp/SKILL.md` — how to operate the wallet
 - `providers/*/plugin/` — Cursor, Claude, Codex, and Grok plugins
 - Machine-readable docs index: [`llms.txt`](llms.txt)
@@ -29,7 +29,7 @@ Product page: https://ironwallet.io/ai
 
 Networks: Ethereum, BSC, Polygon, Base, Arbitrum, Optimism, Avalanche, Tron, Bitcoin, Litecoin, Dogecoin, Solana, XRP, TON.
 
-There is no generic smart-contract call tool. Transfers and Swap Proxy are the on-chain actions.
+There is no generic smart-contract call tool. Transfers and swaps are the on-chain actions.
 
 ## Security
 

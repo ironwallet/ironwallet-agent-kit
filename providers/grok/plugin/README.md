@@ -1,8 +1,8 @@
-# Ironwallet for Grok
+# IronWallet for Grok
 
-The Ironwallet MCP server gives Grok secure access to a **non-custodial** wallet. Seed phrases stay encrypted on the host and never leave this machine. The agent can retrieve balances, sign locally, transfer tokens, and swap across 10+ networks.
+The IronWallet MCP server gives Grok secure access to a **non-custodial** wallet. Seed phrases stay encrypted on the host and never leave this machine. The agent can retrieve balances, sign locally, transfer tokens, and swap across 10+ networks.
 
-Seed-compatible with the [Ironwallet](https://ironwallet.io) app. There is no per-transaction confirmation UI.
+Seed-compatible with the [IronWallet](https://ironwallet.io) app. There is no per-transaction confirmation UI.
 
 **Requirements:** Node.js 20+ (`npx`). Use a dedicated wallet with limited balance.
 
@@ -19,6 +19,7 @@ From a local clone, use `.` instead of the GitHub repo. Reload so MCP picks up `
 
 ## Tools
 
+<!-- tools-table -->
 | Tool | Purpose | Moves funds? |
 |------|---------|:------------:|
 | `list_wallets` | Names, addresses, and `policy` | no |
@@ -34,6 +35,7 @@ From a local clone, use `.` instead of the GitHub repo. Reload so MCP picks up `
 | `estimate_swap` | Quote (may expire) | no |
 | `execute_swap` | Fresh quote → sign → swap | **yes** |
 | `get_swap_status` | Poll a swap | no |
+<!-- /tools-table -->
 
 No tool accepts or returns a seed. Import and backup only in the local browser (`open_wallet_manager` / `backup_url`).
 

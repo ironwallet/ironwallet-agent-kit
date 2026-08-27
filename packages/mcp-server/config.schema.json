@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ironwallet.io/schemas/mcp-server-env-config.json",
-  "title": "Ironwallet MCP server environment profile",
+  "title": "IronWallet MCP server environment profile",
   "type": "object",
   "additionalProperties": false,
   "required": [

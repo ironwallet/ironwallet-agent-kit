@@ -1,5 +1,5 @@
 /**
- * MCP tools for Swap Proxy (SWP): discovery, estimate, execute, status.
+ * MCP tools for swaps: discovery, estimate, execute, status.
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -22,26 +22,14 @@ import {
 import { signSwapTransactions } from "../signing/swap.js";
 import { enforcePolicy } from "../policy.js";
 import { logInfo } from "../log.js";
+import {
+  mcpToolConfig,
+  swapAssetInputSchema,
+  toolDefinition,
+} from "./definitions.js";
 import type { ToolHelpers } from "./helpers.js";
 
-const assetInputSchema = z.object({
-  network: z.string().describe("Network id, e.g. ethereum, bsc, bitcoin."),
-  symbol: z.string().describe("Asset symbol, e.g. ETH, USDT."),
-  address: z
-    .string()
-    .optional()
-    .nullable()
-    .describe("Token contract address. Omit/null for the native coin."),
-  decimals: z
-    .number()
-    .int()
-    .optional()
-    .describe(
-      "Token decimals. If omitted, resolved via SWP catalog (paged). Prefer passing decimals (+ address for tokens) from list_swap_assets.",
-    ),
-});
-
-type AssetInput = z.infer<typeof assetInputSchema>;
+type AssetInput = z.infer<typeof swapAssetInputSchema>;
 
 async function enrichAssets(
   items: SwapAsset[],
@@ -224,14 +212,7 @@ export function registerSwapTools(server: McpServer, helpers: ToolHelpers): void
 
   server.registerTool(
     "list_swap_networks",
-    {
-      title: "List swap networks",
-      description:
-        "List networks available for Swap Proxy (SWP). Use before listing swap assets.",
-      inputSchema: {
-        wallet: z.string().optional(),
-      },
-    },
+    mcpToolConfig(toolDefinition("list_swap_networks")),
     async ({ wallet }) =>
       withToolLog("list_swap_networks", { wallet }, async ({ correlationId }) => {
         const { token } = await session(wallet, correlationId);
@@ -252,22 +233,7 @@ export function registerSwapTools(server: McpServer, helpers: ToolHelpers): void
 
   server.registerTool(
     "list_swap_assets",
-    {
-      title: "List swap assets",
-      description:
-        "List tradable assets from Swap Proxy. direction=from lists sell assets; direction=to requires fromNetwork/fromSymbol (and fromAddress for tokens) and lists buy assets. Enriches with wallet address and balance when possible.",
-      inputSchema: {
-        wallet: z.string().optional(),
-        direction: z.enum(["from", "to"]),
-        fromNetwork: z.string().optional(),
-        fromSymbol: z.string().optional(),
-        fromAddress: z.string().optional().nullable(),
-        search: z.string().optional(),
-        networks: z.array(z.string()).optional(),
-        page: z.number().int().positive().optional(),
-        pageSize: z.number().int().positive().max(100).optional(),
-      },
-    },
+    mcpToolConfig(toolDefinition("list_swap_assets")),
     async (args) =>
       withToolLog("list_swap_assets", args, async ({ correlationId }) => {
         const { entry, token } = await session(args.wallet, correlationId);
@@ -319,21 +285,7 @@ export function registerSwapTools(server: McpServer, helpers: ToolHelpers): void
 
   server.registerTool(
     "estimate_swap",
-    {
-      title: "Estimate swap",
-      description:
-        "Get a Swap Proxy quote (amounts, fees, operationId). Quote can expire — prefer execute_swap for sending (it re-estimates). Amount is a decimal string; set maxMode=true to sell the full balance (backend corrects amount).",
-      inputSchema: {
-        wallet: z.string().optional(),
-        from: assetInputSchema,
-        to: assetInputSchema,
-        amount: z
-          .string()
-          .optional()
-          .describe("Sell amount as decimal string. Required unless maxMode."),
-        maxMode: z.boolean().optional(),
-      },
-    },
+    mcpToolConfig(toolDefinition("estimate_swap")),
     async ({ wallet, from, to, amount, maxMode }) =>
       withToolLog(
         "estimate_swap",
@@ -376,21 +328,7 @@ export function registerSwapTools(server: McpServer, helpers: ToolHelpers): void
 
   server.registerTool(
     "execute_swap",
-    {
-      title: "Execute swap",
-      description:
-        "Execute a swap via Swap Proxy: fresh estimate → create → local sign → execute. Does NOT use the transfer relay. Irreversible once submitted — no second confirmation. Returns operationId and txHash; poll with get_swap_status.",
-      inputSchema: {
-        wallet: z.string().optional(),
-        from: assetInputSchema,
-        to: assetInputSchema,
-        amount: z
-          .string()
-          .optional()
-          .describe("Sell amount as decimal string. Required unless maxMode."),
-        maxMode: z.boolean().optional(),
-      },
-    },
+    mcpToolConfig(toolDefinition("execute_swap")),
     async ({ wallet, from, to, amount, maxMode }) =>
       withToolLog(
         "execute_swap",
@@ -511,14 +449,7 @@ export function registerSwapTools(server: McpServer, helpers: ToolHelpers): void
 
   server.registerTool(
     "get_swap_status",
-    {
-      title: "Get swap status",
-      description: "Poll Swap Proxy order/operation status by operationId.",
-      inputSchema: {
-        wallet: z.string().optional(),
-        operationId: z.string(),
-      },
-    },
+    mcpToolConfig(toolDefinition("get_swap_status")),
     async ({ wallet, operationId }) =>
       withToolLog(
         "get_swap_status",

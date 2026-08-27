@@ -1,5 +1,5 @@
 ---
-description: Never expose Ironwallet recovery phrases or private keys
+description: Never expose IronWallet recovery phrases or private keys
 alwaysApply: true
 ---
 

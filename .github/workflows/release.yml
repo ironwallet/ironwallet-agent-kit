@@ -11,10 +11,12 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: release
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          fetch-tags: true
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
@@ -22,18 +24,39 @@ jobs:
           package-manager-cache: false
       - name: Tag and npm publish
         working-directory: packages/mcp-server
+        env:
+          IWAGENTKIT_SSH_SIGNING_KEY: ${{ secrets.IWAGENTKIT_SSH_SIGNING_KEY }}
         run: |
           set -euo pipefail
           npm ci
           npm run build
           VERSION="$(node -p "require('./package.json').version")"
           TAG="v${VERSION}"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-          if git rev-parse "${TAG}" >/dev/null 2>&1; then
+          git config user.email "iwagentkit@users.noreply.github.com"
+          git config user.name "iwagentkit"
+          if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "tag ${TAG} already exists"
           else
-            git tag "${TAG}"
-            git push origin "${TAG}"
+            if [ -z "${IWAGENTKIT_SSH_SIGNING_KEY:-}" ]; then
+              echo "IWAGENTKIT_SSH_SIGNING_KEY is not set; cannot create a signed tag"
+              exit 1
+            fi
+            KEY_DIR="$(mktemp -d)"
+            printf '%s\n' "${IWAGENTKIT_SSH_SIGNING_KEY}" | tr -d '\r' >"${KEY_DIR}/signing"
+            chmod 600 "${KEY_DIR}/signing"
+            if ! grep -q 'BEGIN OPENSSH PRIVATE KEY' "${KEY_DIR}/signing" && ! grep -q 'BEGIN PRIVATE KEY' "${KEY_DIR}/signing"; then
+              echo "IWAGENTKIT_SSH_SIGNING_KEY is not an OpenSSH private key"
+              exit 1
+            fi
+            cp "${GITHUB_WORKSPACE}/.github/iwagentkit.pub" "${KEY_DIR}/signing.pub"
+            git config gpg.format ssh
+            git config user.signingkey "${KEY_DIR}/signing"
+            git config tag.gpgsign true
+            if ! ssh-keygen -y -f "${KEY_DIR}/signing" >/dev/null; then
+              echo "IWAGENTKIT_SSH_SIGNING_KEY is not readable by OpenSSH"
+              exit 1
+            fi
+            git tag -s -m "${TAG}" "${TAG}"
+            git push origin "refs/tags/${TAG}"
           fi
           npm publish --access public

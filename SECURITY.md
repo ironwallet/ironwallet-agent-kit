@@ -1,6 +1,6 @@
 # Security Policy
 
-This repository is the **Ironwallet agent kit and MCP server** (`@ironwallet/mcp-server`) in production configuration. It is **not** the Ironwallet mobile or desktop app, and it is **not** Ironwallet’s internal development or pre-production contours. Those remain closed-source.
+This repository is the **IronWallet agent kit and MCP server** (`@ironwallet/mcp-server`) in production configuration. It is **not** the IronWallet mobile or desktop app. Those remain closed-source.
 
 Product terms and privacy live on the website, not here:
 
@@ -13,7 +13,7 @@ Product terms and privacy live on the website, not here:
 
 Report privately using **one** of:
 
-1. **GitHub Security Advisories** (preferred once this repository is public): [Open a private advisory](https://github.com/ironwallet/ironwallet-agent-kit/security/advisories/new)
+1. **GitHub Security Advisories** (preferred): [Open a private advisory](https://github.com/ironwallet/ironwallet-agent-kit/security/advisories/new)
 2. **Email** the Security group: [security@ironwallet.io](mailto:security@ironwallet.io)
 
 In the report, include:
@@ -22,7 +22,7 @@ In the report, include:
 - Version (`@ironwallet/mcp-server` version and/or plugin version)
 - Steps to reproduce, impact, and any proof-of-concept **without** real seed phrases, private keys, or main-wallet funds
 
-We aim to **acknowledge** a valid report within **3 business days**. We will say whether the issue is in this kit, in the closed-source app, or in Relay / Swap Proxy, and we will keep the reporter informed until it is fixed or declined.
+We aim to **acknowledge** a valid report within **3 business days**. We will say whether the issue is in this kit, in the closed-source app, or in the backends, and we will keep the reporter informed until it is fixed or declined.
 
 There is no public bug bounty for this repository.
 
@@ -36,16 +36,16 @@ There is no public bug bounty for this repository.
 
 **Out of scope (still report privately; they are not fixed in this tree)**
 
-- Ironwallet iOS / Android / desktop application
-- Ironwallet Relay, Swap Proxy, and other backends
+- IronWallet iOS / Android / desktop application
+- IronWallet backends
 - Third-party RPC / indexer / blockchain behavior
 - Issues that only exist in non-production builds you do not have from this public tree
 
 ## Threat model
 
-The MCP server is a **self-custody hot wallet** on the user’s machine. Recovery phrases are encrypted at rest in `~/.ironwallet-mcp/keystore.json` and unwrapped with a local secret (`keystore-passphrase`, or `IW_PASSPHRASE` if set). The server decrypts locally in order to sign. The mnemonic and private keys never appear in MCP tool arguments or results, in agent chat, in logs intended for the model, or in HTTPS bodies to Ironwallet backends.
+The MCP server is a **self-custody hot wallet** on the user’s machine. Recovery phrases are encrypted at rest in `~/.ironwallet-mcp/keystore.json` and unwrapped with a local secret (`keystore-passphrase`, or `IW_PASSPHRASE` if set). The server decrypts locally in order to sign. The mnemonic and private keys never appear in MCP tool arguments or results, in agent chat, in logs intended for the model, or in HTTPS bodies to IronWallet backends.
 
-What **does** leave the machine: signed transactions and swap payloads, plus non-secret metadata (wallet names/addresses, balances, quotes, a generated relay API key, a device id). Signing never happens on Ironwallet servers. There is **no** per-transaction confirmation UI. Optional per-wallet policy (`readOnly`, `maxPerTx`, transfer recipient allow-list) is off by default. Process-wide `IW_READ_ONLY` rejects `send_transfer` and `execute_swap` before that policy.
+What **does** leave the machine: signed transactions and swap payloads, plus non-secret metadata (wallet names/addresses, balances, quotes, a device id). The generated relay API key is sent to IronWallet backends as `x-api-key`; it is an authentication credential, stored with the other secrets under `~/.ironwallet-mcp/`. Signing never happens on IronWallet servers. There is **no** per-transaction confirmation UI. Optional per-wallet policy (`readOnly`, `maxPerTx`, transfer recipient allow-list) is off by default. Process-wide `IW_READ_ONLY` rejects `send_transfer` and `execute_swap` before that policy.
 
 Anyone with both the keystore file **and** the wrapping secret can move funds. A leaked seed cannot be revoked. Treat this as a dedicated hot wallet with a balance you can afford to lose. Timeout is not always failure: poll `get_operation_status` / `get_swap_status` before retrying a send or swap.
 
@@ -53,7 +53,7 @@ Anyone with both the keystore file **and** the wrapping secret can move funds. A
 
 - Use a **dedicated** wallet with a limited balance. Do not import a primary savings wallet.
 - Back up the recovery phrase only in the local wallet manager (`open_wallet_manager` / `backup_url`), never in chat, tickets, or git.
-- Keep `~/.ironwallet-mcp/` private (files are created mode `0600`). Backing up those files is **not** a substitute for the recovery phrase.
+- Keep `~/.ironwallet-mcp/` private (owner-only POSIX mode `0600`, or NTFS ACL on Windows). Backing up those files is **not** a substitute for the recovery phrase.
 - Desktop / stdio only. Do not expose the MCP server on a network socket.
 
 ## License and copyleft

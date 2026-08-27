@@ -1,5 +1,5 @@
 /**
- * Swap Proxy (SWP) HTTP client — matches mobile SwapProxyApiClient:
+ * Swap HTTP client — matches the mobile client:
  *   /swp/refs/*  discovery
  *   /swp/exchange/*  estimate → create → execute → status
  *

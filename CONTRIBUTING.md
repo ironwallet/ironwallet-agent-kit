@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for taking the time. This GitHub tree is a **production snapshot**: Ironwallet develops the kit internally and exports a finished whitelist for each public release. Skills, rules, agents, and logos are already copied into the plugin directories. There is no content generator here. The commit history is those release cuts, not day-to-day development.
+Thanks for taking the time. This GitHub tree is a **production snapshot**: IronWallet develops the kit internally and exports a finished whitelist for each public release. Skills, rules, agents, and logos are already copied into the plugin directories. There is no content generator here. The commit history is those release cuts, not day-to-day development.
 
 Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -43,8 +43,9 @@ Hand-edited on purpose:
 
 ## Pull request checklist (discussion patches)
 
+- [ ] New or changed MCP tools: update `packages/mcp-server/src/tools/definitions.ts` (do not hand-edit the README / skill tool tables)
 - [ ] MCP changes: `packages/mcp-server` builds (`npm ci && npm run build`)
-- [ ] [`CHANGELOG.md`](CHANGELOG.md) has an entry under **Unreleased**, tagged **content**, **plugin**, or **npm**
+- [ ] [`CHANGELOG.md`](CHANGELOG.md) lists the change under the version in this release commit (Added / Changed / Deprecated / Removed / Fixed / Security). **[Unreleased]** stays empty.
 - [ ] No recovery phrases, private keys, or real main-wallet addresses in fixtures, logs, or docs
 - [ ] No secrets in `mcp.json` — leave generation to first launch under `~/.ironwallet-mcp/`
 
@@ -62,4 +63,4 @@ Plugin manifests and `@ironwallet/mcp-server` share the same `x.y.z`. Bump them 
 - `providers/codex/plugin/.codex-plugin/plugin.json`
 - `providers/grok/plugin/.grok-plugin/plugin.json`
 
-Move **Unreleased** notes in `CHANGELOG.md` into that version. Skill-only wording fixes can sit under **Unreleased** until the next release; do not bump semver on every copy-edit.
+Write the notes under that version in the same commit. Leave **[Unreleased]** empty. Skill-only wording fixes can wait for the next version bump; do not bump semver on every copy-edit.

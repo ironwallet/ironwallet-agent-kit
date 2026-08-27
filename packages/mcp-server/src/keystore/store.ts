@@ -5,15 +5,10 @@
  * local browser wallet manager.
  */
 
-import {
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-  existsSync,
-  chmodSync,
-} from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { getConfig } from "../config.js";
+import { restrictPrivateFile } from "../restrict-private-file.js";
 import { encryptSecret, decryptSecret } from "./crypto.js";
 import type { KeystoreFile, WalletEntry, WalletPolicy } from "./types.js";
 import {
@@ -56,11 +51,7 @@ function saveKeystore(ks: KeystoreFile): void {
   ensureDir();
   const path = keystorePath();
   writeFileSync(path, JSON.stringify(ks, null, 2), { mode: 0o600 });
-  try {
-    chmodSync(path, 0o600);
-  } catch {
-    // best effort on platforms without POSIX perms
-  }
+  restrictPrivateFile(path);
   logInfo("keystore.save", {
     path,
     walletCount: ks.wallets.length,

@@ -1,0 +1,573 @@
+{
+  "package": "@ironwallet/mcp-server",
+  "mcpName": "io.ironwallet/mcp-server",
+  "version": "1.0.2",
+  "tools": [
+    {
+      "name": "list_wallets",
+      "title": "List wallets",
+      "description": "List the wallets in the local keystore with their addresses per network. Each wallet includes policy ({ enabled: false } when unset). Never returns private keys or seed phrases.",
+      "purpose": "Names, addresses, and `policy`",
+      "movesFunds": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "create_wallets",
+      "title": "Create wallets",
+      "description": "Generate one or more brand-new wallets (BIP-39). Returns names and addresses only. Seed phrases are NOT returned to the agent. The response includes a local browser URL where the user can view and back up the recovery phrases.",
+      "purpose": "New wallets; returns a browser `backup_url`",
+      "movesFunds": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "How many wallets to create."
+          },
+          "name_prefix": {
+            "type": "string",
+            "description": "Optional name prefix, e.g. 'agent-hot'. Defaults to 'wallet'."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "count"
+        ]
+      }
+    },
+    {
+      "name": "open_wallet_manager",
+      "title": "Open wallet manager (browser)",
+      "description": "Open a local browser form to add/import/create wallets or back them up (reveal the recovery phrase). Returns a localhost URL for the user to open. Seed phrases are entered and shown ONLY in the browser and never pass through the agent. Use this whenever the user asks to add, import, create, or back up a wallet.",
+      "purpose": "Local browser UI to import / create / back up",
+      "movesFunds": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_deposit_qr",
+      "title": "Deposit QR",
+      "description": "PNG QR to receive funds (generated on the fly; IW mark, address under the code). Pass network for one chain; omit it for one QR per unique address. Does not move funds. Never returns keys or seed phrases. Show the attached image in chat when the host renders it. Each item also has qr_url — open that local URL if the user cannot see the QR, and always write the address in the reply.",
+      "purpose": "PNG QR (try chat; else local `qr_url`)",
+      "movesFunds": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "type": "string",
+            "description": "Wallet name. Optional if only one exists."
+          },
+          "network": {
+            "type": "string",
+            "enum": [
+              "ethereum",
+              "bsc",
+              "polygon",
+              "base",
+              "arbitrum",
+              "optimism",
+              "avalanche",
+              "tron",
+              "bitcoin",
+              "litecoin",
+              "doge",
+              "solana",
+              "ton",
+              "xrp"
+            ],
+            "description": "Network to deposit on. Omit to return one QR per unique address."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_balance",
+      "title": "Get balance",
+      "description": "Get the balance for a wallet on a network. Optionally pass a token contract address; omit for the native coin.",
+      "purpose": "Native or token balance",
+      "movesFunds": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "type": "string",
+            "description": "Wallet name. Optional if only one exists."
+          },
+          "network": {
+            "type": "string",
+            "enum": [
+              "ethereum",
+              "bsc",
+              "polygon",
+              "base",
+              "arbitrum",
+              "optimism",
+              "avalanche",
+              "tron",
+              "bitcoin",
+              "litecoin",
+              "doge",
+              "solana",
+              "ton",
+              "xrp"
+            ]
+          },
+          "tokenAddress": {
+            "type": "string",
+            "description": "Token contract address. Omit for the native coin."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "network"
+        ]
+      }
+    },
+    {
+      "name": "estimate_transfer",
+      "title": "Estimate transfer",
+      "description": "Estimate fees for a transfer without sending. Returns fees and the number of transactions that would be signed.",
+      "purpose": "Fee estimate, no broadcast",
+      "movesFunds": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "type": "string"
+          },
+          "network": {
+            "type": "string",
+            "enum": [
+              "ethereum",
+              "bsc",
+              "polygon",
+              "base",
+              "arbitrum",
+              "optimism",
+              "avalanche",
+              "tron",
+              "bitcoin",
+              "litecoin",
+              "doge",
+              "solana",
+              "ton",
+              "xrp"
+            ]
+          },
+          "to": {
+            "type": "string",
+            "description": "Recipient address."
+          },
+          "amount": {
+            "type": "string",
+            "description": "Amount in asset units (decimal string)."
+          },
+          "tokenAddress": {
+            "type": "string",
+            "description": "Token contract address. Omit for the native coin."
+          },
+          "memo": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "network",
+          "to",
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "send_transfer",
+      "title": "Send transfer",
+      "description": "Send a transfer: sign locally with the wallet's key and broadcast via the IronWallet forward relay (estimate -> sign -> forward) for EVM, Tron, Bitcoin, Litecoin, Doge, Solana, XRP and TON. Irreversible once broadcast — no second confirmation. Returns the transaction hash (and operation id where applicable).",
+      "purpose": "Sign locally and send",
+      "movesFunds": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "type": "string"
+          },
+          "network": {
+            "type": "string",
+            "enum": [
+              "ethereum",
+              "bsc",
+              "polygon",
+              "base",
+              "arbitrum",
+              "optimism",
+              "avalanche",
+              "tron",
+              "bitcoin",
+              "litecoin",
+              "doge",
+              "solana",
+              "ton",
+              "xrp"
+            ]
+          },
+          "to": {
+            "type": "string",
+            "description": "Recipient address."
+          },
+          "amount": {
+            "type": "string",
+            "description": "Amount in asset units (decimal string)."
+          },
+          "tokenAddress": {
+            "type": "string",
+            "description": "Token contract address. Omit for the native coin."
+          },
+          "memo": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "network",
+          "to",
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "get_operation_status",
+      "title": "Get operation status",
+      "description": "Poll the state of a forward operation by its operation id.",
+      "purpose": "Poll a transfer",
+      "movesFunds": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "type": "string"
+          },
+          "network": {
+            "type": "string",
+            "enum": [
+              "ethereum",
+              "bsc",
+              "polygon",
+              "base",
+              "arbitrum",
+              "optimism",
+              "avalanche",
+              "tron",
+              "bitcoin",
+              "litecoin",
+              "doge",
+              "solana",
+              "ton",
+              "xrp"
+            ]
+          },
+          "operationId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "network",
+          "operationId"
+        ]
+      }
+    },
+    {
+      "name": "list_swap_networks",
+      "title": "List swap networks",
+      "description": "List networks available for swaps. Use before listing swap assets.",
+      "purpose": "Networks available for swap",
+      "movesFunds": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list_swap_assets",
+      "title": "List swap assets",
+      "description": "List tradable assets. direction=from lists sell assets; direction=to requires fromNetwork/fromSymbol (and fromAddress for tokens) and lists buy assets. Enriches with wallet address and balance when possible.",
+      "purpose": "Sell / buy catalog",
+      "movesFunds": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "from",
+              "to"
+            ]
+          },
+          "fromNetwork": {
+            "type": "string"
+          },
+          "fromSymbol": {
+            "type": "string"
+          },
+          "fromAddress": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "search": {
+            "type": "string"
+          },
+          "networks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "pageSize": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 100
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "direction"
+        ]
+      }
+    },
+    {
+      "name": "estimate_swap",
+      "title": "Estimate swap",
+      "description": "Get a swap quote (amounts, fees, operationId). Quote can expire — prefer execute_swap for sending (it re-estimates). Amount is a decimal string; set maxMode=true to sell the full balance (backend corrects amount).",
+      "purpose": "Quote (may expire)",
+      "movesFunds": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "type": "string"
+          },
+          "from": {
+            "type": "object",
+            "properties": {
+              "network": {
+                "type": "string",
+                "description": "Network id, e.g. ethereum, bsc, bitcoin."
+              },
+              "symbol": {
+                "type": "string",
+                "description": "Asset symbol, e.g. ETH, USDT."
+              },
+              "address": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Token contract address. Omit/null for the native coin."
+              },
+              "decimals": {
+                "type": "integer",
+                "description": "Token decimals. If omitted, resolved via SWP catalog (paged). Prefer passing decimals (+ address for tokens) from list_swap_assets."
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "network",
+              "symbol"
+            ]
+          },
+          "to": {
+            "type": "object",
+            "properties": {
+              "network": {
+                "type": "string",
+                "description": "Network id, e.g. ethereum, bsc, bitcoin."
+              },
+              "symbol": {
+                "type": "string",
+                "description": "Asset symbol, e.g. ETH, USDT."
+              },
+              "address": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Token contract address. Omit/null for the native coin."
+              },
+              "decimals": {
+                "type": "integer",
+                "description": "Token decimals. If omitted, resolved via SWP catalog (paged). Prefer passing decimals (+ address for tokens) from list_swap_assets."
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "network",
+              "symbol"
+            ]
+          },
+          "amount": {
+            "type": "string",
+            "description": "Sell amount as decimal string. Required unless maxMode."
+          },
+          "maxMode": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to"
+        ]
+      }
+    },
+    {
+      "name": "execute_swap",
+      "title": "Execute swap",
+      "description": "Execute a swap: fresh estimate → create → local sign → execute. Does NOT use the transfer relay. Irreversible once submitted — no second confirmation. Returns operationId and txHash; poll with get_swap_status.",
+      "purpose": "Fresh quote → sign → swap",
+      "movesFunds": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "type": "string"
+          },
+          "from": {
+            "type": "object",
+            "properties": {
+              "network": {
+                "type": "string",
+                "description": "Network id, e.g. ethereum, bsc, bitcoin."
+              },
+              "symbol": {
+                "type": "string",
+                "description": "Asset symbol, e.g. ETH, USDT."
+              },
+              "address": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Token contract address. Omit/null for the native coin."
+              },
+              "decimals": {
+                "type": "integer",
+                "description": "Token decimals. If omitted, resolved via SWP catalog (paged). Prefer passing decimals (+ address for tokens) from list_swap_assets."
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "network",
+              "symbol"
+            ]
+          },
+          "to": {
+            "type": "object",
+            "properties": {
+              "network": {
+                "type": "string",
+                "description": "Network id, e.g. ethereum, bsc, bitcoin."
+              },
+              "symbol": {
+                "type": "string",
+                "description": "Asset symbol, e.g. ETH, USDT."
+              },
+              "address": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Token contract address. Omit/null for the native coin."
+              },
+              "decimals": {
+                "type": "integer",
+                "description": "Token decimals. If omitted, resolved via SWP catalog (paged). Prefer passing decimals (+ address for tokens) from list_swap_assets."
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "network",
+              "symbol"
+            ]
+          },
+          "amount": {
+            "type": "string",
+            "description": "Sell amount as decimal string. Required unless maxMode."
+          },
+          "maxMode": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to"
+        ]
+      }
+    },
+    {
+      "name": "get_swap_status",
+      "title": "Get swap status",
+      "description": "Poll swap order/operation status by operationId.",
+      "purpose": "Poll a swap",
+      "movesFunds": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "type": "string"
+          },
+          "operationId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "operationId"
+        ]
+      }
+    }
+  ]
+}

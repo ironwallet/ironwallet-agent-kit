@@ -4,9 +4,9 @@
 import type { BakedEnvProfile } from "./env-profile.js";
 
 export const BAKED_ENV: BakedEnvProfile = {
-  "authUrl": "https://iwio.app/auth",
-  "relayUrl": "https://iwio.app/txs/api",
-  "swapProxyUrl": "https://iwio.app",
+  "authUrl": "https://iwio.ai/mcp/auth",
+  "relayUrl": "https://iwio.ai/mcp/txs/api",
+  "swapProxyUrl": "https://iwio.ai/mcp",
   "evmRpcUrls": {
     "ethereum": "https://ethereum-rpc.publicnode.com",
     "bsc": "https://bsc-rpc.publicnode.com",
@@ -24,6 +24,6 @@ export const BAKED_ENV: BakedEnvProfile = {
   "tonApiUrl": "https://toncenter.com/api/v2",
   "xrpRpcUrl": "https://xrplcluster.com",
   "bitcoinTestnet": false,
-  "ratesApiUrl": "https://rates.iwio.app",
-  "staticResourcesUrl": "https://resources.iwio.app/Ironwallet"
+  "ratesApiUrl": "https://iwio.ai/mcp",
+  "staticResourcesUrl": "https://iwio.ai/mcp/Ironwallet"
 } as const;

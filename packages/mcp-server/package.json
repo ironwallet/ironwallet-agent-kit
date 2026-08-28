@@ -1,6 +1,6 @@
 {
   "name": "@ironwallet/mcp-server",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "mcpName": "io.ironwallet/mcp-server",
   "license": "MIT",
   "description": "Non-custodial IronWallet MCP: seeds stay encrypted on the host. Balances, local signing, transfers, and swaps across 10+ networks.",

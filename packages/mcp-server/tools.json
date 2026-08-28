@@ -1,7 +1,7 @@
 {
   "package": "@ironwallet/mcp-server",
   "mcpName": "io.ironwallet/mcp-server",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "tools": [
     {
       "name": "list_wallets",

@@ -3,7 +3,7 @@
   "name": "io.ironwallet/mcp-server",
   "title": "IronWallet",
   "description": "Non-custodial IronWallet MCP: local signing, balances, transfers, and swaps.",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "websiteUrl": "https://ironwallet.io/ai",
   "repository": {
     "url": "https://github.com/ironwallet/ironwallet-agent-kit",
@@ -14,7 +14,7 @@
     {
       "registryType": "npm",
       "identifier": "@ironwallet/mcp-server",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "transport": {
         "type": "stdio"
       }

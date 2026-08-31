@@ -5,7 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.1] - 2026-08-31
+
+### Added
+
+- `get_runtime_info` tool: running `@ironwallet/mcp-server` version vs published npm dist-tags. Does not self-update.
+- `prepare_update` tool: on explicit user request, stage the published version into the npx cache so the next MCP restart runs it. No self-restart; wallets untouched.
+
+### Changed
+
+- MCP Registry metadata (`server.json`): capability-focused description, icon, `runtimeHint: npx`, and the `IW_READ_ONLY` environment variable. Release CI stamps build provenance into publisher-provided `_meta`.
 
 ## [1.1.0] - 2026-08-28
 
@@ -57,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Release of the IronWallet agent kit and `@ironwallet/mcp-server`.
 
-[Unreleased]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.1.0...HEAD
+[1.1.1]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.0.1...v1.0.2

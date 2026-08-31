@@ -38,6 +38,29 @@ export interface ToolDefinition {
 
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
+    name: "get_runtime_info",
+    title: "Get runtime info",
+    description:
+      "Report this process's @ironwallet/mcp-server version and compare it to the published npm package (dist-tags on the configured registry). Does not update or restart the server. If updateAvailable is true, tell the user and offer prepare_update; stage it only after they agree.",
+    purpose: "Running version vs published npm package",
+    movesFunds: false,
+    inputSchema: {},
+  },
+  {
+    name: "prepare_update",
+    title: "Prepare update (applies on next restart)",
+    description:
+      "Stage a newer @ironwallet/mcp-server into this server's npx cache so the NEXT MCP restart runs it. Call only when the user explicitly asks to update (usually after get_runtime_info shows updateAvailable). The running server keeps its current version until the user restarts the MCP host; wallets and keys are untouched. Not available for global or local installs.",
+    purpose: "Stage the npm update for the next restart",
+    movesFunds: false,
+    inputSchema: {
+      tag: z
+        .string()
+        .optional()
+        .describe('npm dist-tag to stage (default "latest"), e.g. latest or preprod.'),
+    },
+  },
+  {
     name: "list_wallets",
     title: "List wallets",
     description:

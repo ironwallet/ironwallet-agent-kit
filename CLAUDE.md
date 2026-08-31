@@ -26,6 +26,7 @@ Product page: https://ironwallet.io/ai
 - **Transfer:** `list_wallets` / `get_balance` → `estimate_transfer` (optional) → `send_transfer`
 - **Swap:** `list_swap_networks` → `list_swap_assets`. Copy `network`, `symbol`, `address`, `decimals` from the catalog. Do not invent token addresses. Then `estimate_swap` or `execute_swap`.
 - **Deposit QR:** `get_deposit_qr`. Show the PNG in chat if the host renders it. If the user cannot see it, open `qr_url` and write the address. Do not say the QR is “above” unless they can see it.
+- **Version:** `get_runtime_info` — running package vs published npm. Does not self-update. On explicit request `prepare_update` stages the new version in the npx cache; it applies on the next MCP host restart.
 
 Networks: Ethereum, BSC, Polygon, Base, Arbitrum, Optimism, Avalanche, Tron, Bitcoin, Litecoin, Dogecoin, Solana, XRP, TON.
 

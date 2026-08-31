@@ -99,5 +99,15 @@ jobs:
             exit 0
           fi
           curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          # Stamp provenance into publisher-provided _meta; values come from this
+          # run, so nothing is hardcoded in the repo. The registry stores this
+          # object verbatim (io.modelcontextprotocol.registry/official is
+          # registry output and must not be written here).
+          jq --arg commit "${GITHUB_SHA}" --arg run "${GITHUB_RUN_ID}" \
+             --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+             '._meta["io.modelcontextprotocol.registry/publisher-provided"].buildInfo =
+                { commit: $commit, pipelineId: $run, timestamp: $ts }' \
+             server.json > server.json.tmp
+          mv server.json.tmp server.json
           ./mcp-publisher login dns --domain ironwallet.io --private-key "${MCP_PRIVATE_KEY}"
           ./mcp-publisher publish

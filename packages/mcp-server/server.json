@@ -2,9 +2,16 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.ironwallet/mcp-server",
   "title": "IronWallet",
-  "description": "Non-custodial IronWallet MCP: local signing, balances, transfers, and swaps.",
-  "version": "1.1.0",
+  "description": "Non-custodial crypto wallet MCP: check balances, sign and send transfers, and swap tokens locally.",
+  "version": "1.1.1",
   "websiteUrl": "https://ironwallet.io/ai",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/ironwallet/ironwallet-agent-kit/main/.github/assets/logo.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": ["any"]
+    }
+  ],
   "repository": {
     "url": "https://github.com/ironwallet/ironwallet-agent-kit",
     "source": "github",
@@ -14,7 +21,16 @@
     {
       "registryType": "npm",
       "identifier": "@ironwallet/mcp-server",
-      "version": "1.1.0",
+      "version": "1.1.1",
+      "runtimeHint": "npx",
+      "environmentVariables": [
+        {
+          "name": "IW_READ_ONLY",
+          "description": "Set to true to disable send_transfer and execute_swap for the whole server. Balances, estimates, and lists still work.",
+          "format": "boolean",
+          "isRequired": false
+        }
+      ],
       "transport": {
         "type": "stdio"
       }

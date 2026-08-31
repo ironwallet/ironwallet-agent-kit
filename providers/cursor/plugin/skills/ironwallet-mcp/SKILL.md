@@ -23,6 +23,8 @@ confirmation UI**. Prefer a dedicated hot wallet with limited balance.
 - Send / transfer on supported networks
 - Swap tokens
 - Create, import, or back up a wallet (seed stays in the local browser)
+- Check whether this MCP is the published npm version (`get_runtime_info`)
+  and stage an update on explicit request (`prepare_update`)
 
 ## Before calling tools
 
@@ -65,6 +67,8 @@ confirmation UI**. Prefer a dedicated hot wallet with limited balance.
 <!-- tools-table -->
 | Tool | Purpose | Moves funds? |
 |------|---------|:------------:|
+| `get_runtime_info` | Running version vs published npm package | no |
+| `prepare_update` | Stage the npm update for the next restart | no |
 | `list_wallets` | Names, addresses, and `policy` | no |
 | `accept_mcp_consent` | Record chat acceptance of the MCP disclaimer | no |
 | `create_wallets` | New wallets; returns a browser `backup_url` | no |
@@ -83,6 +87,13 @@ confirmation UI**. Prefer a dedicated hot wallet with limited balance.
 <!-- /tools-table -->
 
 No tool accepts or returns a seed. Import and backup only in the local browser.
+
+`get_runtime_info` compares this process to the published npm package. It does
+not update the server. If `updateAvailable` is true, tell the user. With their
+explicit OK, call `prepare_update` — it stages the new version in the npx
+cache and changes nothing until restart — then ask them to restart the MCP
+host. Never call `prepare_update` unprompted, and do not clear the npx cache
+by hand unless they ask.
 
 ## Wallets
 

@@ -22,6 +22,8 @@ From a local clone, use `.` instead of the GitHub repo. Reload so MCP picks up `
 <!-- tools-table -->
 | Tool | Purpose | Moves funds? |
 |------|---------|:------------:|
+| `get_runtime_info` | Running version vs published npm package | no |
+| `prepare_update` | Stage the npm update for the next restart | no |
 | `list_wallets` | Names, addresses, and `policy` | no |
 | `accept_mcp_consent` | Record chat acceptance of the MCP disclaimer | no |
 | `create_wallets` | New wallets; returns a browser `backup_url` | no |

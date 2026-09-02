@@ -7,12 +7,14 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ok, session, withToolLog } from "./helpers.js";
+import { registerRuntimeTools } from "./runtime.js";
 import { registerWalletTools } from "./wallets.js";
 import { registerTransferTools } from "./transfer.js";
 import { registerSwapTools } from "./swap.js";
 
 export function registerTools(server: McpServer): void {
   const helpers = { ok, withToolLog, session };
+  registerRuntimeTools(server, helpers);
   registerWalletTools(server, helpers);
   registerTransferTools(server, helpers);
   registerSwapTools(server, helpers);

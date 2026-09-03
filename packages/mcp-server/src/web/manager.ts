@@ -10,6 +10,10 @@
  *
  * The keystore passphrase is resolved locally (generated on first use). Forms
  * only ask for wallet name / mnemonic / count.
+ *
+ * Deleting a wallet is a manager-only action (no MCP tool): it is irreversible
+ * and destroys the local copy of a seed, so it needs a human on a separate
+ * confirmation page rather than an agent acting on a chat phrase.
  */
 
 import { createServer, type IncomingMessage, type Server } from "node:http";
@@ -18,10 +22,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   loadKeystore,
+  getEntry,
   importWallet,
   createWallets,
   revealMnemonic,
   markBackedUp,
+  removeWallet,
 } from "../keystore/store.js";
 import { requirePassphrase } from "../passphrase.js";
 import { logError, logInfo } from "../log.js";
@@ -55,6 +61,11 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/** JS string literal safe to embed inside an inline <script> (no `</script>` break-out). */
+function jsString(s: string): string {
+  return JSON.stringify(s).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/\u2028|\u2029/g, (c) => `\\u${c.charCodeAt(0).toString(16)}`);
 }
 
 function armInactivityTimer(): void {
@@ -214,6 +225,13 @@ const STYLE = `
     cursor:pointer; box-shadow:none;
   }
   button.ghost:hover { border-color:var(--primary); }
+  button.ghost.danger { color:var(--danger); }
+  button.ghost.danger:hover { border-color:var(--danger); }
+  button.btn.danger { background:var(--danger); }
+  .notice {
+    background:var(--success-bg); color:var(--success); border-radius:14px;
+    padding:12px 16px; margin:0 0 16px; font-size:14px; font-weight:600;
+  }
 
   code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
   ol.words {
@@ -312,10 +330,67 @@ function walletCard(token: string, w: { name: string; backedUp?: boolean; addres
         <input type="hidden" name="name" value="${escapeHtml(w.name)}">
         <button class="ghost" type="submit">Reveal phrase</button>
       </form>
+      <form method="POST" action="/${token}/delete" style="margin:0">
+        <input type="hidden" name="name" value="${escapeHtml(w.name)}">
+        <button class="ghost danger" type="submit">Delete</button>
+      </form>
     </div>
   </div>
   ${addrs}
 </div>`;
+}
+
+/**
+ * Deletion is confirmed on a separate page, never inline: the user retypes the
+ * wallet name, and for a wallet that was never backed up also acknowledges that
+ * the recovery phrase is about to be destroyed. The server re-checks both.
+ */
+function deleteConfirmPage(
+  token: string,
+  w: { name: string; backedUp?: boolean; addresses: Record<string, string> },
+  notice = "",
+): string {
+  const err = notice ? `<p class="err">${escapeHtml(notice)}</p>` : "";
+  const seedWarning = w.backedUp
+    ? ""
+    : `<label class="consent-check">
+      <input id="delete-seed" type="checkbox" name="lose_seed" value="1" required>
+      <span>This wallet was never backed up. Deleting it destroys the only copy of its recovery phrase. I understand any funds on these addresses will be unrecoverable.</span>
+    </label>`;
+  return layout(
+    token,
+    `Delete "${w.name}"`,
+    `<div class="card">
+  <h2 style="margin-top:0" class="err">Delete "${escapeHtml(w.name)}"?</h2>
+  <p>This removes the encrypted seed of this wallet from this machine. Funds are not moved: anything on these addresses stays on-chain and can only be reached again by importing the recovery phrase. The manager does not check balances before deleting.</p>
+  ${addressesBlock(token, w.addresses)}
+  ${err}
+  <form method="POST" action="/${token}/delete/confirm" id="delete-form">
+    <input type="hidden" name="name" value="${escapeHtml(w.name)}">
+    ${seedWarning}
+    <label>Type the wallet name to confirm</label>
+    <input id="delete-confirm" name="confirm" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(w.name)}" required>
+    <div class="consent-actions" style="margin-top:16px">
+      <button class="btn danger" id="delete-go" type="submit" disabled>Delete wallet</button>
+      <a class="back" href="/${token}">Cancel</a>
+    </div>
+  </form>
+</div>
+<script>
+(function(){
+  var name = ${jsString(w.name)};
+  var input = document.getElementById('delete-confirm');
+  var seed = document.getElementById('delete-seed');
+  var go = document.getElementById('delete-go');
+  if (!input || !go) return;
+  function sync(){ go.disabled = input.value.trim() !== name || (seed ? !seed.checked : false); }
+  input.addEventListener('input', sync);
+  if (seed) seed.addEventListener('change', sync);
+  sync();
+})();
+</script>`,
+    false,
+  );
 }
 
 function netLabel(net: string): string {
@@ -400,11 +475,12 @@ function dashboard(token: string, notice = ""): string {
   const list = ks.wallets.length
     ? ks.wallets.map((w) => walletCard(token, w)).join("")
     : '<div class="empty">No wallets yet. Import or create one below.</div>';
+  const banner = notice ? `<div class="notice">${escapeHtml(notice)}</div>` : "";
 
   return layout(
     token,
     "IronWallet manager",
-    `${notice}
+    `${banner}
 <div class="card">
   <h2>Your wallets</h2>
   <p class="section-hint">${ks.wallets.length} wallet${ks.wallets.length === 1 ? "" : "s"} · Copy or QR to receive</p>
@@ -449,6 +525,21 @@ function addressesBlock(token: string, addresses: Record<string, string>): strin
   return renderAddresses(token, addresses);
 }
 
+/**
+ * POST → 303 → GET so the browser lands on a real, refreshable URL. Rendering
+ * the dashboard straight from the POST left the tab on /consent, where Refresh
+ * either re-posted the form or (Safari, bfcache) showed a stale wallet list.
+ */
+function redirect(res: import("node:http").ServerResponse, location: string): void {
+  res.writeHead(303, {
+    Location: location,
+    "Cache-Control": "no-store, no-cache, must-revalidate, private",
+    Pragma: "no-cache",
+    Expires: "0",
+  });
+  res.end();
+}
+
 function html(res: import("node:http").ServerResponse, status: number, body: string): void {
   res.writeHead(status, {
     "Content-Type": "text/html; charset=utf-8",
@@ -488,6 +579,11 @@ function serveAsset(res: import("node:http").ServerResponse, name: string): bool
   }
 }
 
+/** Stop the manager now instead of waiting for the inactivity timeout (tests, shutdown). */
+export function closeManager(): void {
+  shutdown();
+}
+
 /** Start the manager (or reuse a running one) and return its base URL. */
 export async function ensureManager(): Promise<string> {
   if (current) {
@@ -514,7 +610,12 @@ export async function ensureManager(): Promise<string> {
     void (async () => {
       try {
         if (method === "GET" && sub === "/") {
-          html(res, 200, hasCurrentConsent() ? dashboard(token) : consentPage(token));
+          if (!hasCurrentConsent()) {
+            html(res, 200, consentPage(token));
+            return;
+          }
+          const deleted = new URL(req.url ?? "/", "http://127.0.0.1").searchParams.get("deleted");
+          html(res, 200, dashboard(token, deleted ? `Deleted "${deleted}".` : ""));
           return;
         }
 
@@ -526,7 +627,14 @@ export async function ensureManager(): Promise<string> {
           }
           recordConsent("manager");
           logInfo("manager.consent.ok", {});
-          html(res, 200, dashboard(token));
+          redirect(res, `${base}/`);
+          return;
+        }
+
+        // A stale /consent URL (bookmark, history, refresh after the redirect
+        // was blocked) should land on the live dashboard, not on 404.
+        if (method === "GET" && sub === "/consent") {
+          redirect(res, `${base}/`);
           return;
         }
 
@@ -643,6 +751,59 @@ export async function ensureManager(): Promise<string> {
               )}</div>`,
             ),
           );
+          return;
+        }
+
+        // Step 1: the Delete button on a card only opens the confirmation page.
+        if (method === "POST" && sub === "/delete") {
+          if (!hasCurrentConsent()) {
+            html(res, 403, consentPage(token, "Accept the disclaimer before deleting a wallet."));
+            return;
+          }
+          const form = await readForm(req);
+          const entry = getEntry(form.name ?? "");
+          if (!entry) {
+            redirect(res, `${base}/`);
+            return;
+          }
+          html(res, 200, deleteConfirmPage(token, entry));
+          return;
+        }
+
+        // Step 2: typed name (and, for never-backed-up wallets, the seed
+        // acknowledgement) are validated here regardless of the page's JS.
+        if (method === "POST" && sub === "/delete/confirm") {
+          if (!hasCurrentConsent()) {
+            html(res, 403, consentPage(token, "Accept the disclaimer before deleting a wallet."));
+            return;
+          }
+          const form = await readForm(req);
+          const entry = getEntry(form.name ?? "");
+          if (!entry) {
+            redirect(res, `${base}/`);
+            return;
+          }
+          if ((form.confirm ?? "").trim() !== entry.name) {
+            html(res, 400, deleteConfirmPage(token, entry, "The name you typed does not match."));
+            return;
+          }
+          if (!entry.backedUp && form.lose_seed !== "1" && form.lose_seed !== "on") {
+            html(
+              res,
+              400,
+              deleteConfirmPage(token, entry, "Confirm that you understand the recovery phrase will be destroyed."),
+            );
+            return;
+          }
+          removeWallet(entry.name);
+          logInfo("manager.delete.ok", { name: entry.name, backedUp: entry.backedUp });
+          redirect(res, `${base}/?deleted=${encodeURIComponent(entry.name)}`);
+          return;
+        }
+
+        // Stale delete URLs (refresh on the confirmation page) go back to the list.
+        if (method === "GET" && (sub === "/delete" || sub === "/delete/confirm")) {
+          redirect(res, `${base}/`);
           return;
         }
 

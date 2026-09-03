@@ -3,7 +3,7 @@
  * manager must show this text. Bump CONSENT_VERSION when the wording changes.
  */
 
-export const CONSENT_VERSION = "v1";
+export const CONSENT_VERSION = "v2";
 
 export const CONSENT_TITLE = "Before connecting an AI agent to your wallet";
 
@@ -11,6 +11,7 @@ export const CONSENT_LEAD =
   "Connecting MCP lets the AI agent view balances, transfer assets, and swap on behalf of this wallet.";
 
 export const CONSENT_BULLETS = [
+  "The experience depends on the AI host. Cursor offers the most complete support, Claude Code works well, and Claude Desktop chat is more limited. A paid agent plan is recommended for best results.",
   "By default the agent can send funds and swap without extra confirmation on each operation.",
   "Use a dedicated wallet with a small balance, not your main or savings wallet.",
   "The recovery phrase stays encrypted on this device. Loss or compromise means permanent loss of access to the funds.",

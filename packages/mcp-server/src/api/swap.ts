@@ -376,8 +376,20 @@ function mapEstimate(json: Record<string, unknown>): SwapEstimateResult {
   };
 }
 
-/** Agent-facing swap fees: network / tokenFee / coinFee only. */
-const SWAP_FEE_KEYS = ["network", "tokenFee", "coinFee"] as const;
+/** Agent-facing swap fees: tokenFee / coinFee only (no network fee). */
+const SWAP_FEE_KEYS = ["tokenFee", "coinFee"] as const;
+
+/** Provider extras that confuse agents and are not needed to execute a swap. */
+const SWAP_DROP_KEYS = ["slippage", "slippagePercent", "slippageBps", "networkFee"] as const;
+
+function omitDroppedKeys(src: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(src)) {
+    if ((SWAP_DROP_KEYS as readonly string[]).includes(k)) continue;
+    out[k] = v;
+  }
+  return out;
+}
 
 function pickSwapFees(fees: unknown): Record<string, unknown> | undefined {
   if (!fees || typeof fees !== "object" || Array.isArray(fees)) return undefined;
@@ -389,25 +401,27 @@ function pickSwapFees(fees: unknown): Record<string, unknown> | undefined {
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-function slimSwapDetails(
+export function slimSwapDetails(
   details: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined {
   if (!details) return undefined;
-  if (!("fees" in details)) return details;
-  const { fees, ...rest } = details;
+  const { fees, ...rest } = omitDroppedKeys(details);
   const slim = pickSwapFees(fees);
-  return slim ? { ...rest, fees: slim } : rest;
+  const next = slim ? { ...rest, fees: slim } : rest;
+  return Object.keys(next).length > 0 ? next : undefined;
 }
 
-function slimSwapPayload(json: Record<string, unknown>): Record<string, unknown> {
-  const next = { ...json };
+export function slimSwapPayload(json: Record<string, unknown>): Record<string, unknown> {
+  const next = omitDroppedKeys(json);
   if ("fees" in next) {
     const slim = pickSwapFees(next.fees);
     if (slim) next.fees = slim;
     else delete next.fees;
   }
   if (next.details && typeof next.details === "object" && !Array.isArray(next.details)) {
-    next.details = slimSwapDetails(next.details as Record<string, unknown>);
+    const slim = slimSwapDetails(next.details as Record<string, unknown>);
+    if (slim) next.details = slim;
+    else delete next.details;
   }
   return next;
 }

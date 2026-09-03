@@ -11,6 +11,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BAKED_ENV } from "./generated/env-config.js";
 import { ALL_NETWORKS, EVM_NETWORKS, type NetworkId } from "./networks.js";
+import {
+  HISTORY_API_KINDS,
+  type HistoryApiKind,
+  type HistoryApiSpec,
+  type HistoryApis,
+} from "./api/history/types.js";
 import { resolveDeviceFingerprint } from "./device-fingerprint.js";
 import {
   resolveDeviceId,
@@ -147,6 +153,11 @@ export interface Config {
   xrpRpcUrl: string;
   /** True when Bitcoin should use testnet (dev). */
   bitcoinTestnet: boolean;
+  /**
+   * Transaction-history indexer chain per network (first entry is primary).
+   * Empty array = history unsupported for that network in this build.
+   */
+  historyApis: Record<NetworkId, HistoryApiSpec[]>;
   /** Per-attempt HTTP/RPC timeout in milliseconds. */
   httpTimeoutMs: number;
   /**
@@ -221,6 +232,70 @@ function resolveEvmRpcUrls(
   return urls;
 }
 
+/**
+ * Non-EVM chains can read history from the same endpoints that serve balances,
+ * so they work on every profile. EVM chains need an indexer (Blockscout /
+ * Routescan / NodeReal) that only the profile knows about.
+ */
+const DEFAULT_HISTORY_APIS: Record<NetworkId, HistoryApiSpec[]> = {
+  ethereum: [],
+  bsc: [],
+  polygon: [],
+  base: [],
+  arbitrum: [],
+  optimism: [],
+  avalanche: [],
+  tron: [{ kind: "trongrid" }],
+  bitcoin: [{ kind: "esplora" }],
+  litecoin: [{ kind: "esplora" }],
+  doge: [{ kind: "blockcypher" }],
+  solana: [{ kind: "solana-rpc" }],
+  ton: [{ kind: "toncenter" }],
+  xrp: [{ kind: "xrp-rpc" }],
+};
+
+function isHistoryApiSpec(value: unknown): value is HistoryApiSpec {
+  if (!value || typeof value !== "object") return false;
+  const spec = value as { kind?: unknown; url?: unknown };
+  if (!HISTORY_API_KINDS.includes(spec.kind as HistoryApiKind)) return false;
+  return spec.url === undefined || (typeof spec.url === "string" && spec.url.length > 0);
+}
+
+/** Validate a per-network chain from the profile or `IW_HISTORY_APIS`; bad entries are dropped. */
+function sanitizeHistoryApis(raw: unknown, origin: string): HistoryApis {
+  const out: HistoryApis = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const [network, chain] of Object.entries(raw as Record<string, unknown>)) {
+    if (!(ALL_NETWORKS as readonly string[]).includes(network)) continue;
+    if (!Array.isArray(chain)) continue;
+    const specs = chain.filter(isHistoryApiSpec).map((s) => ({
+      kind: s.kind,
+      ...(s.url ? { url: s.url.replace(/\/+$/, "") } : {}),
+    }));
+    if (specs.length !== chain.length) {
+      process.stderr.write(
+        `[ironwallet-mcp] ${origin}: ignored ${chain.length - specs.length} invalid history API entr(ies) for ${network}\n`,
+      );
+    }
+    out[network as NetworkId] = specs;
+  }
+  return out;
+}
+
+function resolveHistoryApis(profile: HistoryApis | undefined): Record<NetworkId, HistoryApiSpec[]> {
+  const merged: Record<NetworkId, HistoryApiSpec[]> = { ...DEFAULT_HISTORY_APIS };
+  Object.assign(merged, sanitizeHistoryApis(profile, "profile.historyApis"));
+  const envRaw = process.env.IW_HISTORY_APIS;
+  if (envRaw && envRaw.trim().length > 0) {
+    try {
+      Object.assign(merged, sanitizeHistoryApis(JSON.parse(envRaw), "IW_HISTORY_APIS"));
+    } catch {
+      process.stderr.write("[ironwallet-mcp] IW_HISTORY_APIS is not valid JSON; ignored\n");
+    }
+  }
+  return merged;
+}
+
 let cached: Config | null = null;
 
 export function getConfig(): Config {
@@ -252,6 +327,7 @@ export function getConfig(): Config {
     tonApiUrl: envOr("IW_TON_API_URL", profile.tonApiUrl),
     xrpRpcUrl: envOr("IW_XRP_RPC", profile.xrpRpcUrl),
     bitcoinTestnet: profile.bitcoinTestnet,
+    historyApis: resolveHistoryApis(profile.historyApis),
     httpTimeoutMs: envInt("IW_HTTP_TIMEOUT_MS", 15000, 1000, 120000),
     // Forward can take well over 15s on L2s when the relay waits for broadcast /
     // inclusion; default 60s. Cap raised to 5 min so slow envs can override.

@@ -25,5 +25,96 @@ export const BAKED_ENV: BakedEnvProfile = {
   "xrpRpcUrl": "https://xrplcluster.com",
   "bitcoinTestnet": false,
   "ratesApiUrl": "https://iwio.ai/mcp",
-  "staticResourcesUrl": "https://iwio.ai/mcp/Ironwallet"
+  "staticResourcesUrl": "https://iwio.ai/mcp/Ironwallet",
+  "historyApis": {
+    "ethereum": [
+      {
+        "kind": "etherscan",
+        "url": "https://eth.blockscout.com/api"
+      }
+    ],
+    "bsc": [
+      {
+        "kind": "nodereal",
+        "url": "https://bsc-explorer-api.nodereal.io/api"
+      }
+    ],
+    "polygon": [
+      {
+        "kind": "etherscan",
+        "url": "https://polygon.blockscout.com/api"
+      }
+    ],
+    "base": [
+      {
+        "kind": "etherscan",
+        "url": "https://base.blockscout.com/api"
+      }
+    ],
+    "arbitrum": [
+      {
+        "kind": "etherscan",
+        "url": "https://arbitrum.blockscout.com/api"
+      }
+    ],
+    "optimism": [
+      {
+        "kind": "etherscan",
+        "url": "https://optimism.blockscout.com/api"
+      }
+    ],
+    "avalanche": [
+      {
+        "kind": "etherscan",
+        "url": "https://api.routescan.io/v2/network/mainnet/evm/43114/etherscan/api"
+      }
+    ],
+    "tron": [
+      {
+        "kind": "tronscan",
+        "url": "https://tronscanner.org/api/tron"
+      },
+      {
+        "kind": "trongrid"
+      }
+    ],
+    "bitcoin": [
+      {
+        "kind": "esplora"
+      },
+      {
+        "kind": "esplora",
+        "url": "https://mempool.space/api"
+      }
+    ],
+    "litecoin": [
+      {
+        "kind": "esplora"
+      }
+    ],
+    "doge": [
+      {
+        "kind": "blockcypher"
+      }
+    ],
+    "solana": [
+      {
+        "kind": "solana-rpc",
+        "url": "https://solana-rpc.publicnode.com"
+      },
+      {
+        "kind": "solana-rpc"
+      }
+    ],
+    "ton": [
+      {
+        "kind": "toncenter"
+      }
+    ],
+    "xrp": [
+      {
+        "kind": "xrp-rpc"
+      }
+    ]
+  }
 } as const;

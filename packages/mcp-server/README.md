@@ -77,10 +77,11 @@ The mnemonic never appears in tool inputs/outputs, logs meant for the agent, or 
 | `list_wallets` | Names, addresses, and `policy` | no |
 | `accept_mcp_consent` | Record chat acceptance of the MCP disclaimer | no |
 | `create_wallets` | New wallets; returns a browser `backup_url` | no |
-| `open_wallet_manager` | Local browser UI to import / create / back up | no |
+| `open_wallet_manager` | Local browser UI to import / create / back up / delete | no |
 | `set_wallet_policy` | Replace per-wallet limits (`readOnly`, `maxPerTxUsd`, allow-list) | no |
 | `get_deposit_qr` | PNG QR (try chat; else local `qr_url`) | no |
 | `get_balance` | Native or token balance | no |
+| `get_transaction_history` | Recent txs from public explorers (paged) | no |
 | `estimate_transfer` | Fee estimate, no broadcast | no |
 | `send_transfer` | Sign locally and send | **yes** |
 | `get_operation_status` | Poll a transfer | no |
@@ -91,12 +92,13 @@ The mnemonic never appears in tool inputs/outputs, logs meant for the agent, or 
 | `get_swap_status` | Poll a swap | no |
 <!-- /tools-table -->
 
-No tool accepts or returns a seed. Import and backup only in the local browser (`open_wallet_manager` / `backup_url`).
+No tool accepts or returns a seed. Import, backup, and delete only in the local browser (`open_wallet_manager` / `backup_url`).
 
 ### Wallets
 
 - **Create:** `create_wallets` — the agent gets names and addresses; open `backup_url` in a browser to view and back up recovery phrases.
 - **Import / back up:** `open_wallet_manager` — loopback-only page; the phrase is typed or shown only in the browser.
+- **Delete:** the Delete button in the manager. A separate confirmation page asks the user to retype the wallet name; a wallet that was never backed up also needs an explicit acknowledgement that its recovery phrase is destroyed. Funds are not moved. There is no MCP tool for this.
 - **List:** `list_wallets`
 - **Deposit QR:** `get_deposit_qr` — PNG (generated on the fly) plus `qr_url`. Show the image in chat when the host renders it; otherwise open `qr_url`. Pass `network` for one chain. The wallet manager also has a QR button next to each address.
 

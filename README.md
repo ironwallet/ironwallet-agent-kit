@@ -88,10 +88,11 @@ Manually installed MCP does **not** auto-update with the plugin.
 | `list_wallets` | Names, addresses, and `policy` | no |
 | `accept_mcp_consent` | Record chat acceptance of the MCP disclaimer | no |
 | `create_wallets` | New wallets; returns a browser `backup_url` | no |
-| `open_wallet_manager` | Local browser UI to import / create / back up | no |
+| `open_wallet_manager` | Local browser UI to import / create / back up / delete | no |
 | `set_wallet_policy` | Replace per-wallet limits (`readOnly`, `maxPerTxUsd`, allow-list) | no |
 | `get_deposit_qr` | PNG QR (try chat; else local `qr_url`) | no |
 | `get_balance` | Native or token balance | no |
+| `get_transaction_history` | Recent txs from public explorers (paged) | no |
 | `estimate_transfer` | Fee estimate, no broadcast | no |
 | `send_transfer` | Sign locally and send | **yes** |
 | `get_operation_status` | Poll a transfer | no |
@@ -102,7 +103,7 @@ Manually installed MCP does **not** auto-update with the plugin.
 | `get_swap_status` | Poll a swap | no |
 <!-- /tools-table -->
 
-No tool accepts or returns a seed. Import and backup only in the local browser (`open_wallet_manager` / `backup_url`).
+No tool accepts or returns a seed. Import, backup, and delete only in the local browser (`open_wallet_manager` / `backup_url`); deleting asks the user to retype the wallet name.
 
 ## Configuration
 

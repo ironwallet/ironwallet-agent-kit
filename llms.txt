@@ -72,13 +72,17 @@ Package: `npx -y @ironwallet/mcp-server`
 
 ## Tools
 
-Read-only: `list_wallets`, `open_wallet_manager`, `get_deposit_qr`, `get_balance`, `estimate_transfer`, `get_operation_status`, `list_swap_networks`, `list_swap_assets`, `estimate_swap`, `get_swap_status`.
+Read-only: `get_runtime_info`, `prepare_update`, `list_wallets`, `accept_mcp_consent`, `create_wallets`, `open_wallet_manager`, `set_wallet_policy`, `get_deposit_qr`, `get_balance`, `get_transaction_history`, `estimate_transfer`, `get_operation_status`, `list_swap_networks`, `list_swap_assets`, `estimate_swap`, `get_swap_status`.
 
 Moves funds: `send_transfer`, `execute_swap` — irreversible once broadcast; no second confirmation.
 
 `list_wallets` always includes `policy` (`{ enabled: false }` when unset).
 
 `create_wallets` returns names, addresses, and a local `backup_url`. No tool accepts or returns a seed.
+
+`open_wallet_manager` is the local browser page for import, backup (reveal recovery phrase), and delete. Deleting has no tool: the user retypes the wallet name in the manager; never-backed-up wallets also require acknowledging the phrase is destroyed.
+
+History: `get_transaction_history` reads recent transactions for one network from public block explorers (never from the IronWallet backend); opaque `cursor` for older pages. `status: "unavailable"` = explorers failed, not an empty history. `asset.warning` marks spam-looking tokens.
 
 Deposit QR: `get_deposit_qr` attaches a PNG (generated on the fly) and a `qr_url`. Show the image in chat if the host renders it; otherwise open `qr_url` and give the address.
 

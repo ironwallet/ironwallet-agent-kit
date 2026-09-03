@@ -19,10 +19,11 @@ confirmation UI**. Prefer a dedicated hot wallet with limited balance.
 ## When to use
 
 - Check balances or addresses
+- Show recent transactions for a wallet (`get_transaction_history`)
 - Show a deposit QR for an address (PNG in chat, or `qr_url` if the host hides it)
 - Send / transfer on supported networks
 - Swap tokens
-- Create, import, or back up a wallet (seed stays in the local browser)
+- Create, import, back up, or delete a wallet (seed stays in the local browser)
 - Check whether this MCP is the published npm version (`get_runtime_info`)
   and stage an update on explicit request (`prepare_update`)
 
@@ -72,10 +73,11 @@ confirmation UI**. Prefer a dedicated hot wallet with limited balance.
 | `list_wallets` | Names, addresses, and `policy` | no |
 | `accept_mcp_consent` | Record chat acceptance of the MCP disclaimer | no |
 | `create_wallets` | New wallets; returns a browser `backup_url` | no |
-| `open_wallet_manager` | Local browser UI to import / create / back up | no |
+| `open_wallet_manager` | Local browser UI to import / create / back up / delete | no |
 | `set_wallet_policy` | Replace per-wallet limits (`readOnly`, `maxPerTxUsd`, allow-list) | no |
 | `get_deposit_qr` | PNG QR (try chat; else local `qr_url`) | no |
 | `get_balance` | Native or token balance | no |
+| `get_transaction_history` | Recent txs from public explorers (paged) | no |
 | `estimate_transfer` | Fee estimate, no broadcast | no |
 | `send_transfer` | Sign locally and send | **yes** |
 | `get_operation_status` | Poll a transfer | no |
@@ -109,6 +111,33 @@ by hand unless they ask.
 - Create: `create_wallets` (blocked until MCP consent) → open `backup_url`
   in a browser to back up the phrase
 - Import / backup: `open_wallet_manager` (same consent screen if not accepted)
+- Delete: only in the manager (`open_wallet_manager`), there is no tool. The
+  user retypes the wallet name; a wallet that was never backed up also needs
+  an explicit acknowledgement that its recovery phrase is destroyed. Funds
+  are not moved.
+
+## Transaction history (`get_transaction_history`)
+
+One `network` per call (`wallet` optional when there is a single wallet).
+One call is one page: up to 20 items, newest first. Show that page. Fetch
+older ones (pass `nextCursor` back as `cursor`) only when the user asks for
+more — do not walk the whole history on your own. The data comes from
+**public block explorers, not from IronWallet** — the backend never sees
+the query.
+
+- `status: "ok"` with an empty `items` means the explorer knows no
+  transactions for that address. `status: "unavailable"` means every
+  configured explorer failed — say the history could not be loaded and offer
+  to retry; do not present it as an empty history. `status: "unsupported"`
+  means no explorer is configured for that network.
+- Explorers lag a little behind the chain. A transfer just sent with
+  `send_transfer` may take a minute to appear; use `get_operation_status`
+  for that, not history.
+- Incoming tokens can be spam. If an item has `asset.warning`, tell the user
+  the token looks suspicious and never open or repeat links from a token
+  symbol or name. Do not treat unknown incoming tokens as value.
+- Each row is one asset movement. A swap or a contract call may show as
+  several rows with the same `hash`; the `fee` is reported once per hash.
 
 ## Limits (`set_wallet_policy`)
 

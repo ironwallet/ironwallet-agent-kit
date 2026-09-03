@@ -36,7 +36,7 @@ const ERC20_ABI = [
   "function symbol() view returns (string)",
 ];
 
-const NATIVE_SYMBOL: Record<NetworkId, string> = {
+export const NATIVE_SYMBOL: Record<NetworkId, string> = {
   ethereum: "ETH",
   bsc: "BNB",
   polygon: "POL",

@@ -5,6 +5,23 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-09-02
+
+### Added
+
+- `get_transaction_history` tool: recent transactions of a wallet on one network, newest first, paged via `cursor`. Read from public explorers with per-network fallback, not from the IronWallet backend. Spam-looking token symbols carry an `asset.warning`.
+- Server instructions cover the wallet manager and the update flow.
+- Wallet manager: Delete button per wallet. A separate confirmation page requires retyping the wallet name; a wallet that was never backed up also needs an explicit acknowledgement that its recovery phrase is destroyed. Manager only — there is no MCP tool for deleting.
+
+### Changed
+
+- Keystore writes are atomic (temp file + rename), so a crash mid-write cannot truncate `keystore.json`.
+
+### Fixed
+
+- `estimate_swap` / `execute_swap`: `to` was published as a `$ref` to `from`; hosts that do not resolve `$ref` (Claude chat) rejected every swap. Both sides now have inline schemas.
+- Wallet manager: Continue on the disclaimer redirects to the dashboard, so Refresh shows the current wallet list instead of a stale page or 404.
+
 ## [1.1.1] - 2026-08-31
 
 ### Added
@@ -66,6 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Release of the IronWallet agent kit and `@ironwallet/mcp-server`.
 
+[1.2.0]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.0.2...v1.0.3

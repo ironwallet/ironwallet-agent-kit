@@ -5,7 +5,18 @@
  * local browser wallet manager.
  */
 
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import {
+  closeSync,
+  existsSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  unlinkSync,
+  writeSync,
+} from "node:fs";
 import { join } from "node:path";
 import { getConfig } from "../config.js";
 import { restrictPrivateFile } from "../restrict-private-file.js";
@@ -47,11 +58,37 @@ export function loadKeystore(): KeystoreFile {
   return parsed;
 }
 
+/**
+ * Atomic save: write a sibling temp file, fsync, then rename over the live
+ * keystore. A crash mid-write must never leave a truncated keystore.json —
+ * that file is the only copy of every seed on this machine. The rename keeps
+ * the owner-only permissions applied to the temp file. If keystore.json is a
+ * symlink, the real target is replaced, not the link. On any failure the temp
+ * file is removed and the previous keystore stays as it was.
+ */
 function saveKeystore(ks: KeystoreFile): void {
   ensureDir();
-  const path = keystorePath();
-  writeFileSync(path, JSON.stringify(ks, null, 2), { mode: 0o600 });
-  restrictPrivateFile(path);
+  const configured = keystorePath();
+  const path = existsSync(configured) ? realpathSync(configured) : configured;
+  const tmp = `${path}.${process.pid}.tmp`;
+  try {
+    const fd = openSync(tmp, "w", 0o600);
+    try {
+      writeSync(fd, JSON.stringify(ks, null, 2));
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+    restrictPrivateFile(tmp);
+    renameSync(tmp, path);
+  } catch (e) {
+    try {
+      unlinkSync(tmp);
+    } catch {
+      // temp file was never created or is already gone
+    }
+    throw e;
+  }
   logInfo("keystore.save", {
     path,
     walletCount: ks.wallets.length,

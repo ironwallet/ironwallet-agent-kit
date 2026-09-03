@@ -11,13 +11,20 @@ encrypted on this machine and never leave the host.
 
 - Check balances and addresses with `list_wallets` / `get_balance`. Read
   `policy` on each wallet (`enabled: false` means no extra limits).
+- History: `get_transaction_history` — one network per call, one page of up
+  to 20 items; older pages via `cursor` only when the user asks for more.
+  Data comes from public explorers, not IronWallet.
+  `status: "unavailable"` is a failure, not an empty history — offer a retry.
+  Items with `asset.warning` are likely spam tokens; do not repeat links from
+  token names.
 - Deposit QR: `get_deposit_qr` — show the PNG in chat. If it does not appear,
   open `qr_url` in the browser and give the address. Do not claim the QR is
   visible when the user cannot see it.
 - Transfers: `estimate_transfer` then `send_transfer`; poll status on timeout.
 - Swaps: `list_swap_networks` → `list_swap_assets` → `estimate_swap` or
   `execute_swap` → `get_swap_status`. Copy asset metadata from the catalog.
-- Never print recovery phrases or private keys. Backup is `open_wallet_manager`.
+- Never print recovery phrases or private keys. Backup and delete are
+  `open_wallet_manager` — the user confirms them in the browser, not in chat.
 - Prefer a small hot wallet. Do not invent extra confirmation steps.
   `send_transfer` and `execute_swap` are irreversible once broadcast.
 - Version: `get_runtime_info` compares this process to the published npm

@@ -1,3 +1,5 @@
+import type { HistoryApis } from "../api/history/types.js";
+
 /** Shape of configurations/config.json baked at build time. */
 export interface BakedEnvProfile {
   authUrl: string;
@@ -16,4 +18,10 @@ export interface BakedEnvProfile {
   tonApiUrl: string;
   xrpRpcUrl: string;
   bitcoinTestnet: boolean;
+  /**
+   * Transaction-history indexers per network, tried in order. Optional: non-EVM
+   * networks fall back to the endpoints above; EVM networks without an entry
+   * report history as unsupported.
+   */
+  historyApis?: HistoryApis;
 }

@@ -62,6 +62,54 @@
     "solanaRpcUrl": { "type": "string" },
     "tonApiUrl": { "type": "string" },
     "xrpRpcUrl": { "type": "string" },
-    "bitcoinTestnet": { "type": "boolean" }
+    "bitcoinTestnet": { "type": "boolean" },
+    "historyApis": {
+      "type": "object",
+      "description": "Public explorer chain per network for get_transaction_history, tried in order. Optional; a network with no entry or an empty array reports status=unsupported. Kinds without url fall back to the profile's *ApiUrl / *RpcUrl (etherscan, nodereal, tronscan always need url).",
+      "additionalProperties": false,
+      "properties": {
+        "ethereum": { "$ref": "#/$defs/historyChain" },
+        "bsc": { "$ref": "#/$defs/historyChain" },
+        "polygon": { "$ref": "#/$defs/historyChain" },
+        "base": { "$ref": "#/$defs/historyChain" },
+        "arbitrum": { "$ref": "#/$defs/historyChain" },
+        "optimism": { "$ref": "#/$defs/historyChain" },
+        "avalanche": { "$ref": "#/$defs/historyChain" },
+        "tron": { "$ref": "#/$defs/historyChain" },
+        "bitcoin": { "$ref": "#/$defs/historyChain" },
+        "litecoin": { "$ref": "#/$defs/historyChain" },
+        "doge": { "$ref": "#/$defs/historyChain" },
+        "solana": { "$ref": "#/$defs/historyChain" },
+        "ton": { "$ref": "#/$defs/historyChain" },
+        "xrp": { "$ref": "#/$defs/historyChain" }
+      }
+    }
+  },
+  "$defs": {
+    "historyChain": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "etherscan",
+              "nodereal",
+              "tronscan",
+              "trongrid",
+              "esplora",
+              "blockcypher",
+              "solana-rpc",
+              "toncenter",
+              "xrp-rpc"
+            ]
+          },
+          "url": { "type": "string", "format": "uri", "minLength": 1 }
+        }
+      }
+    }
   }
 }

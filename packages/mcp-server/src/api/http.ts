@@ -14,6 +14,7 @@
  * timings, status, retry decisions and undici cause chains — without secrets.
  */
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import { getConfig } from "../config.js";
 import {
   errorDetails,
@@ -30,6 +31,8 @@ import {
 export interface HttpError extends Error {
   status?: number;
   body?: string;
+  /** Set when no HTTP status came back. */
+  kind?: "timeout" | "transport";
 }
 
 export interface HttpOptions {
@@ -39,6 +42,11 @@ export interface HttpOptions {
   retries?: number;
   /** Override the per-attempt timeout (ms) for this call. */
   timeoutMs?: number;
+  /**
+   * Set false when the caller waits out 429 itself (keyless gates): a quick
+   * retry would land inside the indexer's suspension window.
+   */
+  retry429?: boolean;
   /** Correlation id for log lines (auto-generated if omitted). */
   correlationId?: string;
   /** Short label for logs, e.g. "relay.forward". */
@@ -46,6 +54,17 @@ export interface HttpOptions {
 }
 
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+const noRetries = new AsyncLocalStorage<true>();
+
+/**
+ * Turn retries off for every `httpJson` call made inside `fn`, however deep.
+ * With retries a dead host outlasts the caller's budget, so the next endpoint
+ * in the fallback list never gets a turn.
+ */
+export function withoutRetries<T>(fn: () => Promise<T>): Promise<T> {
+  return noRetries.run(true, fn);
+}
 
 function isIdempotent(method: string): boolean {
   return method === "GET" || method === "HEAD" || method === "OPTIONS";
@@ -96,7 +115,7 @@ export async function httpJson<T>(
   const method = (init.method ?? "GET").toUpperCase();
   const timeoutMs = opts.timeoutMs ?? cfg.httpTimeoutMs;
   const retriesEnabled = opts.retry ?? isIdempotent(method);
-  const maxRetries = retriesEnabled ? opts.retries ?? cfg.httpRetries : 0;
+  const maxRetries = retriesEnabled && !noRetries.getStore() ? opts.retries ?? cfg.httpRetries : 0;
   const correlationId = opts.correlationId ?? newCorrelationId("http");
   const label = opts.label ?? "http";
   const startedAt = Date.now();
@@ -147,7 +166,10 @@ export async function httpJson<T>(
       const totalAttemptMs = Date.now() - attemptStarted;
 
       if (!res.ok) {
-        const willRetry = attempt < maxRetries && RETRYABLE_STATUS.has(res.status);
+        const willRetry =
+          attempt < maxRetries &&
+          RETRYABLE_STATUS.has(res.status) &&
+          !(res.status === 429 && opts.retry429 === false);
         logWarn("http.attempt.http_error", {
           correlationId,
           label,
@@ -265,10 +287,11 @@ export async function httpJson<T>(
       }
 
       if (timedOut) {
-        const err = new Error(
+        const err: HttpError = new Error(
           `Request timed out after ${timeoutMs}ms for ${method} ${url}` +
             (attempt > 0 ? ` (after ${attempt + 1} attempts)` : ""),
         );
+        err.kind = "timeout";
         logError("http.request.fail", err, {
           correlationId,
           label,
@@ -287,7 +310,8 @@ export async function httpJson<T>(
       }
 
       const msg = e instanceof Error ? e.message : String(e);
-      const err = new Error(`Network error for ${method} ${url}: ${msg}`);
+      const err: HttpError = new Error(`Network error for ${method} ${url}: ${msg}`);
+      err.kind = "transport";
       logError("http.request.fail", err, {
         correlationId,
         label,

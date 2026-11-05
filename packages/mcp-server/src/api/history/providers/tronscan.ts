@@ -1,12 +1,12 @@
 /**
- * TronScan API (apilist.tronscanapi.com shape), reached through the team's
- * keyless caching proxy at tronscanner.org/api/tron. Two sources:
+ * TronScan API (apilist.tronscanapi.com/api), keyless. Two sources:
  * `/transaction` (all transactions of the address, newest first) and
  * `/token_trc20/transfers`. Offset-based (`start` / `limit`), TronScan caps
  * `limit` at 50 — same as the tool's max.
  */
 
 import { httpJson } from "../../http.js";
+import { paced } from "../pace.js";
 import {
   amountOf,
   asString,
@@ -170,6 +170,19 @@ function offsetOf(cursor: string | null): number {
   return n;
 }
 
+/**
+ * Keyless TronScan allows 3 rps per IP and answers a burst with 429 plus a
+ * ~2 minute suspension, so calls are spaced process-wide and a 429 is not
+ * retried: the chain moves on to TronGrid instead of waiting out the penalty.
+ */
+const KEYLESS_GAP_MS = 500;
+
+function get<T>(url: string, label: string, ctx: SourceContext): Promise<T> {
+  return paced("tronscan", KEYLESS_GAP_MS, () =>
+    httpJson<T>(url, { method: "GET" }, { ...ctx.http, retries: 0, label }),
+  );
+}
+
 export function tronscanProvider(baseUrl: string, address: string): HistoryProvider {
   const native: HistorySource = {
     name: "native",
@@ -178,11 +191,7 @@ export function tronscanProvider(baseUrl: string, address: string): HistoryProvi
       const url =
         `${baseUrl}/transaction?address=${encodeURIComponent(address)}` +
         `&limit=${pageSize}&start=${start}&sort=-timestamp&count=true`;
-      const res = await httpJson<{ data?: TronScanTx[]; total?: number }>(
-        url,
-        { method: "GET" },
-        { ...ctx.http, label: "history.tronscan.transaction" },
-      );
+      const res = await get<{ data?: TronScanTx[]; total?: number }>(url, "history.tronscan.transaction", ctx);
       const rows = Array.isArray(res.data) ? res.data : null;
       if (!rows) throw new Error("tronscan transaction: unexpected response");
       const items = rows.map((tx) => mapTronScanTx(tx, address)).filter((x): x is SourceItem => x !== null);
@@ -196,11 +205,7 @@ export function tronscanProvider(baseUrl: string, address: string): HistoryProvi
       const url =
         `${baseUrl}/token_trc20/transfers?relatedAddress=${encodeURIComponent(address)}` +
         `&limit=${pageSize}&start=${start}`;
-      const res = await httpJson<{ token_transfers?: TronScanTrc20Transfer[] }>(
-        url,
-        { method: "GET" },
-        { ...ctx.http, label: "history.tronscan.trc20" },
-      );
+      const res = await get<{ token_transfers?: TronScanTrc20Transfer[] }>(url, "history.tronscan.trc20", ctx);
       const rows = Array.isArray(res.token_transfers) ? res.token_transfers : null;
       if (!rows) throw new Error("tronscan token_trc20/transfers: unexpected response");
       const items = rows.map((row) => mapTronScanTrc20(row, address)).filter((x): x is SourceItem => x !== null);

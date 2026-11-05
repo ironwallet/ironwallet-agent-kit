@@ -30,7 +30,17 @@
     "staticResourcesUrl": {
       "type": "string",
       "format": "uri",
-      "description": "Static resources base with per-network asset catalogs (/assets/main/blockchains/...). Optional; used to map tokens to rates ids."
+      "description": "MCP proxy base for static resources with per-network asset catalogs (/assets/<branch>/blockchains/...). Optional; tried after staticCdnUrls, with the client headers."
+    },
+    "staticCdnUrls": {
+      "type": "array",
+      "description": "Public CDN bases for the same static resources (e.g. https://cdn.iwio.app/Ironwallet), tried in order before staticResourcesUrl. Optional.",
+      "items": { "type": "string", "format": "uri", "minLength": 1 }
+    },
+    "staticAssetsBranch": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,32}$",
+      "description": "Static resources branch: main in prod, staging in preprod / dev. Optional; default main."
     },
     "evmRpcUrls": {
       "type": "object",
@@ -63,9 +73,29 @@
     "tonApiUrl": { "type": "string" },
     "xrpRpcUrl": { "type": "string" },
     "bitcoinTestnet": { "type": "boolean" },
+    "rpcFallbacks": {
+      "type": "object",
+      "description": "Extra endpoints per network with the same API as the primary field (evmRpcUrls.<network>, tronApiUrl, bitcoinApiUrl, …), tried in order when the primary is unreachable, times out or answers 429/5xx. bitcoin and litecoin also take a BlockCypher base (https://api.blockcypher.com/v1/ltc/main) next to Esplora hosts. Optional. TON takes none. A primary overridden via env drops these unless IW_RPC_FALLBACK_<NETWORK> is set.",
+      "additionalProperties": false,
+      "properties": {
+        "ethereum": { "$ref": "#/$defs/urlList" },
+        "bsc": { "$ref": "#/$defs/urlList" },
+        "polygon": { "$ref": "#/$defs/urlList" },
+        "base": { "$ref": "#/$defs/urlList" },
+        "arbitrum": { "$ref": "#/$defs/urlList" },
+        "optimism": { "$ref": "#/$defs/urlList" },
+        "avalanche": { "$ref": "#/$defs/urlList" },
+        "tron": { "$ref": "#/$defs/urlList" },
+        "bitcoin": { "$ref": "#/$defs/urlList" },
+        "litecoin": { "$ref": "#/$defs/urlList" },
+        "doge": { "$ref": "#/$defs/urlList" },
+        "solana": { "$ref": "#/$defs/urlList" },
+        "xrp": { "$ref": "#/$defs/urlList" }
+      }
+    },
     "historyApis": {
       "type": "object",
-      "description": "Public explorer chain per network for get_transaction_history, tried in order. Optional; a network with no entry or an empty array reports status=unsupported. Kinds without url fall back to the profile's *ApiUrl / *RpcUrl (etherscan, nodereal, tronscan always need url).",
+      "description": "Public explorer chain per network for get_transaction_history, tried in order. Optional; a network with no entry or an empty array reports status=unsupported. Kinds without url fall back to the profile's *ApiUrl / *RpcUrl (blockscout, etherscan, nodereal, tronscan, tonapi always need url; blockcypher needs one outside doge). blockscout takes the REST v2 base (https://<instance>/api/v2).",
       "additionalProperties": false,
       "properties": {
         "ethereum": { "$ref": "#/$defs/historyChain" },
@@ -86,6 +116,10 @@
     }
   },
   "$defs": {
+    "urlList": {
+      "type": "array",
+      "items": { "type": "string", "format": "uri", "minLength": 1 }
+    },
     "historyChain": {
       "type": "array",
       "items": {
@@ -96,6 +130,7 @@
           "kind": {
             "type": "string",
             "enum": [
+              "blockscout",
               "etherscan",
               "nodereal",
               "tronscan",

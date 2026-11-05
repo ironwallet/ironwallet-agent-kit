@@ -7,12 +7,24 @@
  * Secrets (Authorization, x-api-key, mnemonics, private keys, full signatures)
  * are redacted. Bodies are summarized by default; set IW_LOG_BODIES=1 to include
  * truncated request/response bodies (still redacted for known secret fields).
+ *
+ * Log files are owner-only (0600 / NTFS ACL) and the default logs dir is 0700:
+ * lines carry addresses, amounts and tx hashes. Default-named daily files older
+ * than LOG_RETENTION_DAYS are deleted once per process start.
  */
 
-import { appendFileSync, mkdirSync, existsSync } from "node:fs";
+import {
+  appendFileSync,
+  chmodSync,
+  mkdirSync,
+  readdirSync,
+  statSync,
+  unlinkSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { getConfig } from "./config.js";
+import { restrictPrivateFile } from "./restrict-private-file.js";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -27,7 +39,13 @@ const SENSITIVE_HEADER = /^(authorization|x-api-key|cookie|set-cookie|proxy-auth
 const SENSITIVE_KEY =
   /^(authorization|accessToken|token|password|passphrase|mnemonic|seed|privateKey|secret|x-api-key|signature|TxnSignature)$/i;
 
+export const LOG_RETENTION_DAYS = 14;
+const DAILY_LOG_NAME = /^iw-mcp-\d{4}-\d{2}-\d{2}\.jsonl$/;
+
 let resolvedPath: string | null | undefined;
+/** True when the path is our own daily file (not IW_LOG_FILE), so its dir is ours to lock down and prune. */
+let defaultPath = false;
+let preparedFile: string | null = null;
 let minLevel: LogLevel | undefined;
 let bodiesEnabled: boolean | undefined;
 let stderrMirror: boolean | undefined;
@@ -74,12 +92,58 @@ export function getLogFilePath(): string | null {
   } catch {
     resolvedPath = join(".", "iw-mcp-logs", `iw-mcp-${new Date().toISOString().slice(0, 10)}.jsonl`);
   }
+  defaultPath = true;
   return resolvedPath;
 }
 
-function ensureDir(filePath: string): void {
+function chmodBestEffort(path: string, mode: number): void {
+  if (process.platform === "win32") return;
+  try {
+    chmodSync(path, mode);
+  } catch {
+    // filesystems without POSIX perms
+  }
+}
+
+/**
+ * Delete default-named daily logs in `dir` last written more than `maxAgeDays`
+ * ago; tighten the survivors to 0600 (files from older releases were 0644).
+ */
+export function pruneOldLogs(
+  dir: string,
+  now: number = Date.now(),
+  maxAgeDays: number = LOG_RETENTION_DAYS,
+): void {
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return;
+  }
+  const maxAgeMs = maxAgeDays * 24 * 60 * 60 * 1000;
+  for (const name of names) {
+    if (!DAILY_LOG_NAME.test(name)) continue;
+    const path = join(dir, name);
+    try {
+      if (now - statSync(path).mtimeMs > maxAgeMs) unlinkSync(path);
+      else chmodBestEffort(path, 0o600);
+    } catch {
+      // locked by another process or already gone
+    }
+  }
+}
+
+/** Once per process: owner-only dir and file, then retention for our own daily files. */
+function prepareLogFile(filePath: string): void {
+  if (preparedFile === filePath) return;
   const dir = dirname(filePath);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  if (defaultPath) chmodBestEffort(dir, 0o700);
+  appendFileSync(filePath, "", { mode: 0o600 });
+  // IW_LOG_FILE may name a device such as /dev/null; chmod on it as root breaks it system-wide.
+  if (statSync(filePath).isFile()) restrictPrivateFile(filePath);
+  if (defaultPath) pruneOldLogs(dir);
+  preparedFile = filePath;
 }
 
 export function newCorrelationId(prefix = "req"): string {
@@ -278,8 +342,8 @@ export function log(
   });
 
   try {
-    ensureDir(file);
-    appendFileSync(file, line + "\n", "utf8");
+    prepareLogFile(file);
+    appendFileSync(file, line + "\n", { encoding: "utf8", mode: 0o600 });
   } catch (e) {
     if (!warnedOnce) {
       warnedOnce = true;

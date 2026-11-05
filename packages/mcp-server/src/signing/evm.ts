@@ -14,7 +14,7 @@
 
 import { Transaction, Wallet } from "ethers";
 import type { NetworkId } from "../config.js";
-import { providerFor } from "../api/rpc.js";
+import { withEvmProvider } from "../api/rpc.js";
 import type { SignContext, SignedTransaction, TransactionToSign } from "./types.js";
 import { logInfo } from "../log.js";
 
@@ -23,13 +23,14 @@ export async function signEvm(
   ctx: SignContext,
   txs: TransactionToSign[],
 ): Promise<SignedTransaction[]> {
-  const provider = providerFor(network);
   const wallet = new Wallet(ctx.privateKey);
 
-  const [chainId, startNonce] = await Promise.all([
-    provider.getNetwork().then((n) => n.chainId),
-    provider.getTransactionCount(ctx.address, "latest"),
-  ]);
+  const [chainId, startNonce] = await withEvmProvider(network, (provider) =>
+    Promise.all([
+      provider.getNetwork().then((n) => n.chainId),
+      provider.getTransactionCount(ctx.address, "latest"),
+    ]),
+  );
   logInfo("sign.evm.context", {
     network,
     address: ctx.address,

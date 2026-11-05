@@ -12,7 +12,7 @@ import { encode, decode, encodeForSigning } from "ripple-binary-codec";
 import { sign as rippleSign } from "ripple-keypairs";
 import { SigningKey } from "ethers";
 import { sha512 } from "@noble/hashes/sha2.js";
-import { getConfig } from "../config.js";
+import { withEndpoint } from "../api/endpoints.js";
 import { httpJson } from "../api/http.js";
 import type { SignContext, SignedTransaction, TransactionToSign } from "./types.js";
 import { logInfo } from "../log.js";
@@ -21,20 +21,21 @@ const TX_HASH_PREFIX = Uint8Array.from([0x54, 0x58, 0x4e, 0x00]); // "TXN\0"
 
 /** XRPL JSON-RPC ({ method, params: [ {...} ] } envelope). */
 async function xrpRpc<T>(method: string, params: Record<string, unknown>): Promise<T> {
-  const cfg = getConfig();
-  const res = await httpJson<{ result?: T & { error?: string } }>(
-    cfg.xrpRpcUrl,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ method, params: [params] }),
-    },
-    { retry: true },
-  );
-  const result = res.result;
-  if (!result) throw new Error(`XRPL ${method} returned no result.`);
-  if (result.error) throw new Error(`XRPL ${method} failed: ${result.error}`);
-  return result;
+  return withEndpoint("xrp", async (url) => {
+    const res = await httpJson<{ result?: T & { error?: string } }>(
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method, params: [params] }),
+      },
+      { retry: true },
+    );
+    const result = res.result;
+    if (!result) throw new Error(`XRPL ${method} returned no result.`);
+    if (result.error) throw new Error(`XRPL ${method} failed: ${result.error}`);
+    return result;
+  });
 }
 
 async function accountSequence(account: string): Promise<number> {

@@ -118,8 +118,15 @@ export interface Config {
   swapProxyUrl: string;
   /** Rates API host (`/api/v1/rate/rates`). Used only for USD policy limits. */
   ratesApiUrl: string;
-  /** Static resources base with asset catalogs (`/assets/main/blockchains/...`). */
+  /**
+   * MCP proxy base for static resources (`/assets/<branch>/blockchains/...`).
+   * Last resort after `staticCdnUrls`; needs the client headers.
+   */
   staticResourcesUrl: string;
+  /** Public CDN bases for the same static resources, tried in order before the proxy. */
+  staticCdnUrls: string[];
+  /** Static resources branch: `main` in prod, `staging` in preprod / dev. */
+  staticAssetsBranch: string;
   /** Optional relay API key (x-api-key). Empty string means header is omitted. */
   relayApiKey: string;
   /** App version string sent as x-iwt-cli / X-App-Version. */
@@ -156,6 +163,11 @@ export interface Config {
   tonApiUrl: string;
   /** XRP Ledger JSON-RPC endpoint. */
   xrpRpcUrl: string;
+  /**
+   * Extra endpoints per network with the same API as the primary one above,
+   * tried in order when it is unreachable, times out or answers 429/5xx.
+   */
+  rpcFallbacks: Partial<Record<NetworkId, string[]>>;
   /** True when Bitcoin should use testnet (dev). */
   bitcoinTestnet: boolean;
   /**
@@ -180,6 +192,20 @@ export interface Config {
 function envOr(key: string, fallback: string): string {
   const v = process.env[key];
   return v && v.length > 0 ? v : fallback;
+}
+
+/** Comma-separated env list; a non-empty env value replaces the profile list. Trailing `/` dropped. */
+function envUrlList(key: string, fallback: readonly string[]): string[] {
+  const v = process.env[key];
+  const raw = v && v.trim().length > 0 ? v.split(",") : fallback;
+  return raw.map((u) => u.trim().replace(/\/+$/, "")).filter((u) => u.length > 0);
+}
+
+function resolveStaticAssetsBranch(profileBranch: string | undefined): string {
+  const branch = envOr("IW_STATIC_ASSETS_BRANCH", profileBranch ?? "main");
+  if (/^[A-Za-z0-9_-]{1,32}$/.test(branch)) return branch;
+  process.stderr.write(`[ironwallet-mcp] invalid static assets branch "${branch}"; using "main"\n`);
+  return "main";
 }
 
 function envBool(key: string, fallback: boolean): boolean {
@@ -235,6 +261,34 @@ function resolveEvmRpcUrls(
     if (override) urls[net] = override;
   }
   return urls;
+}
+
+/** TonCenter has no public mirror with the same API, so TON reads stay on one host. */
+export const RPC_FALLBACK_NETWORKS: readonly NetworkId[] = ALL_NETWORKS.filter((n) => n !== "ton");
+
+const PRIMARY_URL_ENV: Partial<Record<NetworkId, string>> = {
+  ...Object.fromEntries(EVM_NETWORKS.map((n) => [n, `IW_RPC_${n.toUpperCase()}`])),
+  tron: "IW_TRON_API",
+  bitcoin: "IW_BTC_API",
+  litecoin: "IW_LTC_API",
+  doge: "IW_DOGE_API",
+  solana: "IW_SOLANA_RPC",
+  xrp: "IW_XRP_RPC",
+};
+
+/**
+ * `IW_RPC_FALLBACK_<NETWORK>` replaces the profile list. A primary set via env
+ * (own node) drops the profile's public fallbacks: addresses should not leak to
+ * hosts the user did not choose.
+ */
+function resolveRpcFallbacks(profile: Partial<Record<string, string[]>> | undefined): Partial<Record<NetworkId, string[]>> {
+  const out: Partial<Record<NetworkId, string[]>> = {};
+  for (const net of RPC_FALLBACK_NETWORKS) {
+    const ownPrimary = Boolean(process.env[PRIMARY_URL_ENV[net] ?? ""]);
+    const list = envUrlList(`IW_RPC_FALLBACK_${net.toUpperCase()}`, ownPrimary ? [] : profile?.[net] ?? []);
+    if (list.length > 0) out[net] = list;
+  }
+  return out;
 }
 
 /**
@@ -318,6 +372,8 @@ export function getConfig(): Config {
     // code). Empty string means USD policy limits fail closed.
     ratesApiUrl: envOr("IW_RATES_API_URL", profile.ratesApiUrl ?? ""),
     staticResourcesUrl: envOr("IW_STATIC_RESOURCES_URL", profile.staticResourcesUrl ?? ""),
+    staticCdnUrls: envUrlList("IW_STATIC_CDN_URLS", profile.staticCdnUrls ?? []),
+    staticAssetsBranch: resolveStaticAssetsBranch(profile.staticAssetsBranch),
     relayApiKey: resolveRelayApiKey(),
     // Identity headers are not overridable: the backend routes swaps off
     // deviceInfo.systemName and reads appVersion for client metrics, so a
@@ -337,6 +393,7 @@ export function getConfig(): Config {
     solanaRpcUrl: envOr("IW_SOLANA_RPC", profile.solanaRpcUrl),
     tonApiUrl: envOr("IW_TON_API_URL", profile.tonApiUrl),
     xrpRpcUrl: envOr("IW_XRP_RPC", profile.xrpRpcUrl),
+    rpcFallbacks: resolveRpcFallbacks(profile.rpcFallbacks),
     bitcoinTestnet: profile.bitcoinTestnet,
     historyApis: resolveHistoryApis(profile.historyApis),
     httpTimeoutMs: envInt("IW_HTTP_TIMEOUT_MS", 15000, 1000, 120000),
@@ -359,7 +416,7 @@ export function assertServerWritable(action: "send" | "swap"): void {
   );
 }
 
-/** Device headers sent to auth, relay, and swap APIs. */
+/** Device headers sent to everything behind the MCP proxy (auth, relay, swap, rates, static). */
 export function commonHeaders(cfg: Config): Record<string, string> {
   const headers: Record<string, string> = {
     "x-iwt-cli": cfg.appVersion,

@@ -1,6 +1,6 @@
 {
   "name": "@ironwallet/mcp-server",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "mcpName": "io.ironwallet/mcp-server",
   "license": "MIT",
   "description": "Non-custodial IronWallet MCP: seeds stay encrypted on the host. Balances, local signing, transfers, and swaps across 10+ networks.",
@@ -47,8 +47,11 @@
   },
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
-    "test": "tsx --test src/qr/deposit-qr.test.ts src/restrict-private-file.test.ts src/config.device-info.test.ts src/device-fingerprint.test.ts src/device-id.test.ts src/consent/store.test.ts src/keystore/store.test.ts src/web/manager.test.ts src/tools/schema-wire.test.ts src/tools/amount.test.ts src/tools/swap-status.test.ts src/policy.usd.test.ts src/policy.diff.test.ts src/api/rates.test.ts src/api/swap-slim.test.ts src/api/history/history.test.ts src/npm-registry.test.ts",
+    "build": "tsc && npm run build:web",
+    "build:web": "tsc -p web/tsconfig.json && vite build --config web/vite.config.ts",
+    "dev:manager": "tsx src/web/dev.ts",
+    "dev:web": "vite --config web/vite.config.ts",
+    "test": "tsx --test src/qr/deposit-qr.test.ts src/restrict-private-file.test.ts src/config.device-info.test.ts src/device-fingerprint.test.ts src/device-id.test.ts src/consent/store.test.ts src/keystore/store.test.ts src/keystore/crypto.test.ts src/log.test.ts src/web/manager.test.ts src/web/api.test.ts src/web/api-wallets.test.ts src/web/api-portfolio.test.ts src/web/api-history.test.ts src/tools/schema-wire.test.ts src/tools/amount.test.ts src/tools/swap-status.test.ts src/policy.usd.test.ts src/policy.diff.test.ts src/api/rates.test.ts src/api/catalog.test.ts src/api/catalog-sources.test.ts src/api/keyless.test.ts src/api/http.test.ts src/api/endpoints.test.ts src/api/swap-slim.test.ts src/signing/ton.test.ts src/api/history/history.test.ts src/npm-registry.test.ts",
     "start": "node dist/cli.js",
     "dev": "tsx src/cli.ts",
     "prepack": "npm run build"
@@ -59,7 +62,8 @@
     "README.md",
     "LICENSE",
     "server.json",
-    "tools.json"
+    "tools.json",
+    "npm-shrinkwrap.json"
   ],
   "engines": {
     "node": ">=20"
@@ -84,10 +88,19 @@
     "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@fontsource/roboto": "^5.3.0",
+    "@fontsource/roboto-mono": "^5.3.0",
+    "@tanstack/react-query": "^5.104.0",
     "@types/node": "^22.10.0",
     "@types/pngjs": "^6.0.5",
     "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vite": "^6.4.3"
   }
 }

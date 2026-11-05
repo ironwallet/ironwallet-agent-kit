@@ -105,17 +105,18 @@ export function registerWalletTools(server: McpServer, helpers: ToolHelpers): vo
         const created = createWallets(count, requirePassphrase(), {
           namePrefix: name_prefix,
         });
-        const backupUrl = await managerUrlOrUndefined(
+        const managerUrl = await managerUrlOrUndefined(
           correlationId,
           "tool.create_wallets.manager_unavailable",
         );
+        const backupUrl = managerUrl && `${managerUrl}#/backup`;
         return ok({
           correlationId,
           created: created.map((c) => ({ name: c.name, addresses: c.addresses })),
           backup_url: backupUrl,
           backup_hint: backupUrl
-            ? "Seed phrases were not shown to the agent. To view and back them up, open backup_url in a browser and click \"Reveal / backup\" for each wallet (words stay in the browser)."
-            : "Seed phrases were not shown to the agent. Call open_wallet_manager and back up each wallet in the browser (Reveal / backup).",
+            ? "Seed phrases were not shown to the agent. To view and back them up, open backup_url in a browser, pick each wallet and press See Seed phrase (words stay in the browser)."
+            : "Seed phrases were not shown to the agent. Call open_wallet_manager and back up each wallet in the browser (Backup section).",
         });
       }),
   );

@@ -10,7 +10,7 @@ export const BAKED_ENV: BakedEnvProfile = {
   "evmRpcUrls": {
     "ethereum": "https://ethereum-rpc.publicnode.com",
     "bsc": "https://bsc-rpc.publicnode.com",
-    "polygon": "https://polygon-bor-rpc.publicnode.com",
+    "polygon": "https://polygon.drpc.org",
     "base": "https://base-rpc.publicnode.com",
     "arbitrum": "https://arbitrum-one-rpc.publicnode.com",
     "optimism": "https://optimism-rpc.publicnode.com",
@@ -26,11 +26,21 @@ export const BAKED_ENV: BakedEnvProfile = {
   "bitcoinTestnet": false,
   "ratesApiUrl": "https://iwio.ai/mcp",
   "staticResourcesUrl": "https://iwio.ai/mcp/Ironwallet",
+  "staticCdnUrls": [
+    "https://cdn.iwio.app/Ironwallet",
+    "https://cdn1.iwio.app/Ironwallet",
+    "https://cdn2.iwio.app/Ironwallet",
+    "https://resources.iwio.app/Ironwallet"
+  ],
   "historyApis": {
     "ethereum": [
       {
+        "kind": "blockscout",
+        "url": "https://eth.blockscout.com/api/v2"
+      },
+      {
         "kind": "etherscan",
-        "url": "https://eth.blockscout.com/api"
+        "url": "https://api.routescan.io/v2/network/mainnet/evm/1/etherscan/api"
       }
     ],
     "bsc": [
@@ -41,26 +51,26 @@ export const BAKED_ENV: BakedEnvProfile = {
     ],
     "polygon": [
       {
-        "kind": "etherscan",
-        "url": "https://polygon.blockscout.com/api"
+        "kind": "blockscout",
+        "url": "https://polygon.blockscout.com/api/v2"
       }
     ],
     "base": [
       {
-        "kind": "etherscan",
-        "url": "https://base.blockscout.com/api"
+        "kind": "blockscout",
+        "url": "https://base.blockscout.com/api/v2"
       }
     ],
     "arbitrum": [
       {
-        "kind": "etherscan",
-        "url": "https://arbitrum.blockscout.com/api"
+        "kind": "blockscout",
+        "url": "https://arbitrum.blockscout.com/api/v2"
       }
     ],
     "optimism": [
       {
-        "kind": "etherscan",
-        "url": "https://optimism.blockscout.com/api"
+        "kind": "blockscout",
+        "url": "https://optimism.blockscout.com/api/v2"
       }
     ],
     "avalanche": [
@@ -72,7 +82,7 @@ export const BAKED_ENV: BakedEnvProfile = {
     "tron": [
       {
         "kind": "tronscan",
-        "url": "https://tronscanner.org/api/tron"
+        "url": "https://apilist.tronscanapi.com/api"
       },
       {
         "kind": "trongrid"
@@ -90,6 +100,10 @@ export const BAKED_ENV: BakedEnvProfile = {
     "litecoin": [
       {
         "kind": "esplora"
+      },
+      {
+        "kind": "blockcypher",
+        "url": "https://api.blockcypher.com/v1/ltc/main"
       }
     ],
     "doge": [
@@ -119,6 +133,47 @@ export const BAKED_ENV: BakedEnvProfile = {
       {
         "kind": "xrp-rpc"
       }
+    ]
+  },
+  "rpcFallbacks": {
+    "ethereum": [
+      "https://eth.drpc.org"
+    ],
+    "bsc": [
+      "https://bsc-dataseed.bnbchain.org"
+    ],
+    "polygon": [
+      "https://polygon.gateway.tenderly.co",
+      "https://polygon-bor-rpc.publicnode.com"
+    ],
+    "base": [
+      "https://base.drpc.org",
+      "https://mainnet.base.org"
+    ],
+    "arbitrum": [
+      "https://arbitrum.drpc.org",
+      "https://arb1.arbitrum.io/rpc"
+    ],
+    "optimism": [
+      "https://optimism.drpc.org"
+    ],
+    "avalanche": [
+      "https://api.avax.network/ext/bc/C/rpc"
+    ],
+    "tron": [
+      "https://tron-rpc.publicnode.com"
+    ],
+    "bitcoin": [
+      "https://mempool.space/api"
+    ],
+    "litecoin": [
+      "https://api.blockcypher.com/v1/ltc/main"
+    ],
+    "solana": [
+      "https://solana-rpc.publicnode.com"
+    ],
+    "xrp": [
+      "https://s2.ripple.com:51234"
     ]
   }
 } as const;

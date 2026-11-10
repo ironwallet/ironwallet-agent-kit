@@ -1,20 +1,20 @@
 /**
- * USD rates for policy limits (`maxPerTxUsd`).
+ * USD rates for policy limits (`maxPerTxUsd`) and the wallet manager's balances.
  *
  * Same backend the mobile app uses:
  *   GET {ratesApiUrl}/api/v1/rate/rates?Ids=<externalId,...>&Currencies=usd
  * `Ids` are catalog `externalId`s (CoinGecko-style: "ethereum", "tether"), not
  * symbols or contracts. Native coins map statically; tokens are resolved via the
- * public static asset catalog
- *   GET {staticResourcesUrl}/assets/main/blockchains/<net>/assets.mainnet.json
- * matched by contract address (symbol as fallback).
+ * public static asset catalog (see catalog.ts) matched by contract address
+ * (symbol as fallback).
  *
  * Callers must fail closed: `undefined` means "no rate", never "skip the check".
  */
 
-import { getConfig } from "../config.js";
+import { commonHeaders, getConfig } from "../config.js";
 import type { NetworkId } from "../networks.js";
 import { logInfo, logWarn } from "../log.js";
+import { clearCatalogCache, fetchCatalog, type AssetCatalogDocument } from "./catalog.js";
 import { httpJson } from "./http.js";
 
 /** Verified against the mobile app's asset catalogs (init_assets_data). */
@@ -34,32 +34,6 @@ export const NATIVE_EXTERNAL_ID: Record<NetworkId, string> = {
   ton: "the-open-network",
   xrp: "ripple",
 };
-
-/** Networks with a token catalog on static resources (litecoin/doge are native-only). */
-const CATALOG_NETWORKS: readonly NetworkId[] = [
-  "ethereum",
-  "bsc",
-  "polygon",
-  "base",
-  "arbitrum",
-  "optimism",
-  "avalanche",
-  "tron",
-  "bitcoin",
-  "solana",
-  "ton",
-  "xrp",
-];
-
-export interface CatalogAsset {
-  symbol?: string;
-  address?: string;
-  externalId?: string;
-}
-
-export interface AssetCatalogDocument {
-  assets?: CatalogAsset[];
-}
 
 /** Hex (EVM) contracts compare case-insensitively; base58 chains compare exactly. */
 export function sameTokenAddress(a: string, b: string): boolean {
@@ -114,8 +88,18 @@ export function parseUsdRate(
   return { value: rate.value, isExpired: rate.isExpired === true };
 }
 
-const CATALOG_TTL_MS = 6 * 60 * 60 * 1000;
+/** 24h change in percent (`-1.2` = −1.2%), as the mobile app shows it. */
+export function parseDailyChange(response: RatesResponse, externalId: string): number | null {
+  const perCurrency = response[externalId];
+  if (!perCurrency) return null;
+  const usdKey = Object.keys(perCurrency).find((k) => k.toLowerCase() === "usd");
+  const change = usdKey ? perCurrency[usdKey]?.dailyChange : undefined;
+  return typeof change === "number" && Number.isFinite(change) ? change : null;
+}
+
 const RATE_TTL_MS = 60 * 1000;
+/** Ids per request: keeps the query string well under common URL limits. */
+const RATE_BATCH = 100;
 
 /**
  * Keep the policy check snappy: a send/swap should not hang for minutes when
@@ -123,47 +107,119 @@ const RATE_TTL_MS = 60 * 1000;
  */
 const FETCH_OPTS = { timeoutMs: 10000, retries: 1 } as const;
 
-const catalogCache = new Map<NetworkId, { at: number; doc: AssetCatalogDocument }>();
-const rateCache = new Map<string, { at: number; value: number }>();
+export interface UsdQuote {
+  value: number;
+  /** Percent; null when the backend does not report it. */
+  dailyChange: number | null;
+}
+
+const rateCache = new Map<string, { at: number; quote: UsdQuote }>();
+/** One request per id at a time: concurrent callers wait for the same batch. */
+const rateInflight = new Map<string, Promise<void>>();
 
 /** Test hook. */
 export function clearRatesCaches(): void {
-  catalogCache.clear();
+  clearCatalogCache();
   rateCache.clear();
+  rateInflight.clear();
 }
 
-async function fetchCatalog(
-  network: NetworkId,
-  correlationId?: string,
-): Promise<AssetCatalogDocument | undefined> {
-  const cached = catalogCache.get(network);
-  if (cached && Date.now() - cached.at < CATALOG_TTL_MS) return cached.doc;
-  const cfg = getConfig();
-  if (!cfg.staticResourcesUrl) {
-    logWarn("rates.catalog.no_url", { correlationId, network });
-    return undefined;
+/** Test hook: every cached quote is due for a refetch but still known. */
+export function expireRatesCache(): void {
+  for (const entry of rateCache.values()) entry.at = 0;
+}
+
+function freshQuote(id: string): UsdQuote | undefined {
+  const cached = rateCache.get(id);
+  return cached && Date.now() - cached.at < RATE_TTL_MS ? cached.quote : undefined;
+}
+
+/**
+ * Last quotes ever received, however old. Display only (the wallet manager
+ * while a refetch is slow); policy checks must use `getUsdQuotes`.
+ */
+export function lastUsdQuotes(externalIds: readonly string[]): Map<string, UsdQuote> {
+  const out = new Map<string, UsdQuote>();
+  for (const id of externalIds) {
+    const cached = rateCache.get(id);
+    if (cached) out.set(id, cached.quote);
   }
-  const url = `${cfg.staticResourcesUrl}/assets/main/blockchains/${network}/assets.mainnet.json`;
-  try {
-    const doc = await httpJson<AssetCatalogDocument>(
-      url,
-      { method: "GET" },
-      { correlationId, label: "rates.catalog", ...FETCH_OPTS },
-    );
-    catalogCache.set(network, { at: Date.now(), doc });
-    logInfo("rates.catalog.ok", {
-      correlationId,
-      network,
-      assets: doc.assets?.length ?? 0,
+  return out;
+}
+
+/**
+ * USD quotes for many `externalId`s at once (one request per 100 ids).
+ * Unknown ids and failed batches are simply absent from the result.
+ */
+export async function getUsdQuotes(
+  externalIds: readonly string[],
+  correlationId?: string,
+): Promise<Map<string, UsdQuote>> {
+  const out = new Map<string, UsdQuote>();
+  const missing: string[] = [];
+  for (const id of new Set(externalIds)) {
+    const quote = freshQuote(id);
+    if (quote) out.set(id, quote);
+    else missing.push(id);
+  }
+  if (missing.length === 0) return out;
+  const cfg = getConfig();
+  if (!cfg.ratesApiUrl) {
+    logWarn("rates.usd.no_url", { correlationId, ids: missing.length });
+    return out;
+  }
+  const waits = new Set<Promise<void>>();
+  const toFetch: string[] = [];
+  for (const id of missing) {
+    const pending = rateInflight.get(id);
+    if (pending) waits.add(pending);
+    else toFetch.push(id);
+  }
+  for (let i = 0; i < toFetch.length; i += RATE_BATCH) {
+    const ids = toFetch.slice(i, i + RATE_BATCH);
+    const run = fetchQuotes(ids, cfg, correlationId).finally(() => {
+      for (const id of ids) if (rateInflight.get(id) === run) rateInflight.delete(id);
     });
-    return doc;
+    for (const id of ids) rateInflight.set(id, run);
+    waits.add(run);
+  }
+  await Promise.all(waits);
+  for (const id of missing) {
+    const quote = freshQuote(id);
+    if (quote) out.set(id, quote);
+  }
+  return out;
+}
+
+/** One rates request; results land in the cache, failures are logged and dropped. */
+async function fetchQuotes(
+  ids: string[],
+  cfg: ReturnType<typeof getConfig>,
+  correlationId: string | undefined,
+): Promise<void> {
+  const url =
+    `${cfg.ratesApiUrl}/api/v1/rate/rates` +
+    `?Ids=${ids.map(encodeURIComponent).join(",")}&Currencies=usd`;
+  let response: RatesResponse;
+  try {
+    response = await httpJson<RatesResponse>(
+      url,
+      { method: "GET", headers: commonHeaders(cfg) },
+      { correlationId, label: "rates.usd", ...FETCH_OPTS },
+    );
   } catch (e) {
-    logWarn("rates.catalog.fail", {
+    logWarn("rates.usd.fetch_fail", {
       correlationId,
-      network,
+      ids: ids.length,
       error: e instanceof Error ? e.message : String(e),
     });
-    return undefined;
+    return;
+  }
+  for (const id of ids) {
+    const rate = parseUsdRate(response ?? {}, id);
+    if (!rate) continue;
+    if (rate.isExpired) logWarn("rates.usd.expired", { correlationId, externalId: id, value: rate.value });
+    rateCache.set(id, { at: Date.now(), quote: { value: rate.value, dailyChange: parseDailyChange(response ?? {}, id) } });
   }
 }
 
@@ -176,7 +232,6 @@ export async function resolveExternalId(
   correlationId?: string,
 ): Promise<string | undefined> {
   if (!asset.tokenAddress) return NATIVE_EXTERNAL_ID[asset.network];
-  if (!CATALOG_NETWORKS.includes(asset.network)) return undefined;
   const doc = await fetchCatalog(asset.network, correlationId);
   if (!doc) return undefined;
   return findExternalIdInCatalog(doc, {
@@ -204,42 +259,11 @@ export async function getUsdRate(
     return undefined;
   }
 
-  const cached = rateCache.get(externalId);
-  if (cached && Date.now() - cached.at < RATE_TTL_MS) return cached.value;
-
-  const cfg = getConfig();
-  if (!cfg.ratesApiUrl) {
-    logWarn("rates.usd.no_url", { correlationId, externalId });
-    return undefined;
-  }
-  const url =
-    `${cfg.ratesApiUrl}/api/v1/rate/rates` +
-    `?Ids=${encodeURIComponent(externalId)}&Currencies=usd`;
-  let response: RatesResponse;
-  try {
-    response = await httpJson<RatesResponse>(
-      url,
-      { method: "GET" },
-      { correlationId, label: "rates.usd", ...FETCH_OPTS },
-    );
-  } catch (e) {
-    logWarn("rates.usd.fetch_fail", {
-      correlationId,
-      externalId,
-      error: e instanceof Error ? e.message : String(e),
-    });
-    return undefined;
-  }
-
-  const rate = parseUsdRate(response ?? {}, externalId);
-  if (!rate) {
+  const quote = (await getUsdQuotes([externalId], correlationId)).get(externalId);
+  if (!quote) {
     logWarn("rates.usd.missing", { correlationId, externalId });
     return undefined;
   }
-  if (rate.isExpired) {
-    logWarn("rates.usd.expired", { correlationId, externalId, value: rate.value });
-  }
-  rateCache.set(externalId, { at: Date.now(), value: rate.value });
-  logInfo("rates.usd.ok", { correlationId, externalId, value: rate.value });
-  return rate.value;
+  logInfo("rates.usd.ok", { correlationId, externalId, value: quote.value });
+  return quote.value;
 }

@@ -106,6 +106,7 @@ export interface HistoryProvider {
 }
 
 export type HistoryApiKind =
+  | "blockscout"
   | "etherscan"
   | "nodereal"
   | "tronscan"
@@ -134,6 +135,7 @@ export const HISTORY_MAX_LIMIT = 20;
 export const HISTORY_DEFAULT_LIMIT = 20;
 
 export const HISTORY_API_KINDS: readonly HistoryApiKind[] = [
+  "blockscout",
   "etherscan",
   "nodereal",
   "tronscan",

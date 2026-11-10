@@ -6,6 +6,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { warmCatalogs } from "./api/catalog.js";
 import { registerTools } from "./tools/index.js";
 import { getConfig, packageVersion } from "./config.js";
 import { logStartupBanner } from "./log.js";
@@ -53,6 +54,8 @@ export async function serve(): Promise<void> {
     keystoreDir: cfg.keystoreDir,
     readOnly: cfg.readOnly,
   });
+
+  void warmCatalogs();
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

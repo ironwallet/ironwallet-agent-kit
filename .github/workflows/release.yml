@@ -62,6 +62,8 @@ jobs:
           if npm view "@ironwallet/mcp-server@${VERSION}" version >/dev/null 2>&1; then
             echo "npm ${VERSION} already published"
           else
+            # Ship the tested dependency tree: npx installs from npm-shrinkwrap.json, never from package-lock.json.
+            node "${GITHUB_WORKSPACE}/.github/scripts/write-shrinkwrap.cjs" .
             npm publish --access public
           fi
       - name: GitHub Releases

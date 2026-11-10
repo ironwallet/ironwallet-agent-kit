@@ -3,9 +3,12 @@
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { formatUnits } from "ethers";
 import { z } from "zod";
 import { assertServerWritable, canSwap, parseNetworkId, type NetworkId } from "../config.js";
 import { getBalance } from "../api/balances.js";
+import type { Asset } from "../api/catalog.js";
+import { readNetworkBalances, type BalanceMap } from "../api/portfolio.js";
 import {
   assetKey,
   createSwap,
@@ -21,6 +24,7 @@ import {
   type SwapSide,
 } from "../api/swap.js";
 import { signSwapTransactions } from "../signing/swap.js";
+import { tonPublicKeyHex } from "../signing/ton.js";
 import { enforcePolicy, enforceUsdLimit } from "../policy.js";
 import { logInfo } from "../log.js";
 import {
@@ -66,37 +70,64 @@ async function enrichAssets(
     }
   >
 > {
-  return Promise.all(
-    items.map(async (asset) => {
-      const net = parseNetworkId(asset.network);
-      const executable = Boolean(net && canSwap(net));
-      const walletAddress = net ? addresses[net] : undefined;
-      const receivable = Boolean(walletAddress);
-      let balance: string | undefined;
-      let balanceRaw: string | undefined;
-      if (walletAddress && net) {
-        try {
-          const bal = await getBalance(
-            net,
-            walletAddress,
-            asset.address ?? undefined,
-          );
-          balance = bal.formatted;
-          balanceRaw = bal.raw;
-        } catch {
-          // best-effort enrichment
-        }
-      }
-      return {
-        ...asset,
-        walletAddress,
-        balance,
-        balanceRaw,
-        executable,
-        receivable,
-      };
+  const byNetwork = new Map<NetworkId, Asset[]>();
+  items.forEach((asset, i) => {
+    const net = parseNetworkId(asset.network);
+    if (!net || !addresses[net]) return;
+    const list = byNetwork.get(net) ?? [];
+    list.push(asCatalogAsset(net, asset, i));
+    byNetwork.set(net, list);
+  });
+  const balances = new Map<string, bigint>();
+  await Promise.all(
+    [...byNetwork].map(async ([net, assets]) => {
+      const map = await readBalancesWithin(net, addresses[net]!, assets);
+      for (const [id, raw] of map ?? []) balances.set(id, raw);
     }),
   );
+  return items.map((asset, i) => {
+    const net = parseNetworkId(asset.network);
+    const walletAddress = net ? addresses[net] : undefined;
+    const raw = balances.get(String(i));
+    return {
+      ...asset,
+      walletAddress,
+      balance: raw === undefined ? undefined : formatUnits(raw, asset.decimals),
+      balanceRaw: raw?.toString(),
+      executable: Boolean(net && canSwap(net)),
+      receivable: Boolean(walletAddress),
+    };
+  });
+}
+
+/** Listing balances are a convenience: a slow network must not hold up the page. */
+const ENRICH_TIMEOUT_MS = 8000;
+
+function asCatalogAsset(network: NetworkId, asset: SwapAsset, index: number): Asset {
+  return {
+    network,
+    assetId: String(index),
+    symbol: asset.symbol,
+    name: asset.symbol,
+    address: asset.address ?? null,
+    decimals: asset.decimals,
+    displayDecimals: asset.decimals,
+    isDefault: false,
+  };
+}
+
+/** One batched read per network (as the manager does) instead of one per token. */
+async function readBalancesWithin(network: NetworkId, owner: string, assets: Asset[]): Promise<BalanceMap | null> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), ENRICH_TIMEOUT_MS);
+    timer.unref?.();
+  });
+  try {
+    return await Promise.race([readNetworkBalances(network, owner, assets, assets).catch(() => null), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function buildSide(
@@ -210,6 +241,7 @@ async function prepareSwapSides(
     sellAmount,
     opts.correlationId,
   );
+  if (sell.networkId === "ton") fromSide.publicKey = tonPublicKeyHex(mnemonic);
   const toSide = await buildSide(
     token,
     opts.to,

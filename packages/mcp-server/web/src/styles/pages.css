@@ -1,0 +1,596 @@
+/* Screen layouts inside the 600px content column. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Create wallet: blocks 24px apart. */
+.page--form {
+  gap: 24px;
+}
+
+/* Import wallet: denser, the buttons get 10px more air above. */
+.page--tight {
+  gap: 12px;
+}
+
+.page--tight > .button-row {
+  padding-top: 10px;
+}
+
+.page__note {
+  padding-top: 8px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.page__hint {
+  color: var(--text-tertiary);
+}
+
+.page__caption {
+  padding-bottom: 14px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* Backup: caption, wallet picker, CTA 20px below. */
+.page--backup > .wallet-list {
+  padding-top: 0;
+}
+
+.page--backup > .btn {
+  margin-top: 20px;
+}
+
+.page__status {
+  padding-top: 24px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* Wallets: total above the buttons. */
+.total-balance {
+  padding-bottom: 18px;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.total-balance__caption {
+  color: var(--text-secondary);
+}
+
+.home-empty__actions {
+  align-self: stretch;
+}
+
+/* Home: blocks carry their own spacing from the design. */
+/* The mascot hangs left of the chip; equal side padding keeps the chip centred and clear of it. */
+.home__wallet {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 14px 115px 0;
+}
+
+.home__wallet > .dropdown {
+  min-width: 0;
+}
+
+.home__mascot {
+  position: absolute;
+  top: 24px;
+  left: 20px;
+  width: 87px;
+  height: auto;
+  pointer-events: none;
+}
+
+@media (max-width: 480px) {
+  .home__wallet {
+    padding-inline: 0;
+  }
+
+  .home__mascot {
+    display: none;
+  }
+}
+
+.home__balance {
+  padding-top: 12px;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.home__address {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 18px;
+}
+
+.info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--border-accent-subtle);
+  border-radius: 18px;
+  background: var(--surface-accent-subtle);
+}
+
+.info-card__title {
+  color: var(--text-accent);
+  font: 600 18px/24px var(--font-sans);
+}
+
+.info-card__text {
+  color: var(--text-secondary);
+}
+
+.home > .notice {
+  margin-top: 12px;
+}
+
+.home__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.home__toolbar > .toolbar-button,
+.home__toolbar > .dropdown,
+.home__toolbar > .dropdown > .toolbar-button {
+  flex: 1 1 auto;
+}
+
+.toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 26.5px;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  background: var(--surface-default);
+  box-shadow: 0 1px 3px rgba(16, 30, 60, 0.06);
+  color: var(--text-accent);
+  font: 700 18px/24px var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.toolbar-button:hover:not(:disabled) {
+  border-color: var(--border-accent-subtle);
+}
+
+.toolbar-button:disabled {
+  cursor: default;
+}
+
+.toolbar-button__spin {
+  animation: toolbar-spin 1s linear infinite;
+}
+
+@keyframes toolbar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolbar-button__spin {
+    animation: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .home__toolbar {
+    gap: 10px;
+  }
+
+  .toolbar-button {
+    padding-inline: 16px;
+  }
+
+  .toolbar-button--compact .toolbar-button__label {
+    display: none;
+  }
+}
+
+.home > .token-list {
+  margin-top: 16px;
+}
+
+.home > .load-more {
+  margin-top: 10px;
+}
+
+/* Receive: token picker (header, search, chips, list). */
+.receive-picker > .screen-header {
+  padding-bottom: 18px;
+}
+
+.receive-picker__list {
+  padding-top: 8px;
+}
+
+/* Receive: QR card, amount and warning 18px apart. */
+.receive {
+  gap: 18px;
+}
+
+.receive > .screen-header {
+  padding-bottom: 0;
+}
+
+.receive-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 20px;
+  border-radius: 22px;
+  background: var(--surface-default);
+  box-shadow: 0 1px 3px rgba(16, 30, 60, 0.06);
+}
+
+.receive-card__brand {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 6px;
+}
+
+/* The PNG has no quiet zone; the padding gives scanners one on the dark card too. */
+.receive-card__qr {
+  display: block;
+  box-sizing: content-box;
+  width: 232px;
+  height: 232px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--data-qr-paper);
+}
+
+.receive-card__divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  align-self: stretch;
+  padding: 10px 0 14px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.receive-card__line {
+  flex: 1;
+  height: 1px;
+  background: var(--surface-muted);
+}
+
+.receive-card__address {
+  gap: 12px;
+  word-break: break-all;
+  text-align: center;
+}
+
+.receive__amount {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.receive__amount-coin {
+  color: var(--text-secondary);
+}
+
+.receive__amount-usd {
+  color: var(--text-tertiary);
+}
+
+.receive__warning {
+  padding: 0 20px;
+  color: var(--text-secondary);
+  font: 400 15px/1.55 var(--font-sans);
+  text-align: center;
+}
+
+.receive__warning strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.receive > .footer-note {
+  padding-top: 8px;
+}
+
+/* Token: title, address chip, balance, Receive, 16px apart. */
+.token-page {
+  align-items: center;
+  gap: 16px;
+}
+
+.token-page > .screen-header {
+  align-self: stretch;
+  padding-bottom: 0;
+}
+
+.token-page__network {
+  color: var(--text-tertiary);
+}
+
+.address-chip {
+  padding: 11px 18px;
+  border-radius: 14px;
+  background: var(--surface-default);
+}
+
+.token-page__balance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px 10px;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.token-page__usd {
+  color: var(--text-tertiary);
+}
+
+.token-page__tx-title {
+  padding-top: 10px;
+  color: var(--text-primary);
+}
+
+.token-page > .tx-list,
+.token-page > .notice,
+.token-page > .load-more {
+  align-self: stretch;
+}
+
+.token-page > .tx-list .tx-group:first-child {
+  padding-top: 0;
+}
+
+.token-page > .footer-note {
+  padding-top: 8px;
+}
+
+/* ---------- History ---------- */
+
+.history > .screen-header {
+  padding-bottom: 16px;
+}
+
+.history__wallet {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 14px;
+}
+
+.history__chips {
+  margin-top: 0;
+}
+
+.history > .notice,
+.history > .load-more {
+  margin-top: 18px;
+}
+
+.tx-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 18px;
+}
+
+.tx-group__label {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.tx-list--centered .tx-group__label {
+  text-align: center;
+}
+
+.tx-group__items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tx-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 14px 16px;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  background: var(--surface-default);
+  box-shadow: 0 1px 3px rgba(16, 30, 60, 0.06);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.tx-row:hover {
+  border-color: var(--border-accent-subtle);
+}
+
+.tx-row__icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.tx-row__meta {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.tx-row__asset {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tx-row__suffix,
+.tx-row__other {
+  color: var(--text-tertiary);
+}
+
+.tx-row__warning {
+  color: var(--text-danger);
+}
+
+.tx-row__side {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+  max-width: 50%;
+  text-align: right;
+}
+
+.tx-row__amount {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tx-row__amount--in {
+  color: var(--text-success);
+}
+
+.tx-row__details {
+  padding: 5px 11px;
+  border-radius: 9px;
+  background: var(--surface-accent-subtle);
+  color: var(--text-accent);
+}
+
+.tx-status--confirmed {
+  color: var(--status-success);
+}
+
+.tx-status--pending {
+  color: var(--status-warning);
+}
+
+.tx-status--failed {
+  color: var(--status-danger);
+}
+
+/* ---------- Transaction detail ---------- */
+
+.tx-detail > .screen-header {
+  padding-bottom: 6px;
+}
+
+.tx-detail__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 0 22px;
+  text-align: center;
+}
+
+.tx-detail__asset {
+  color: var(--text-secondary);
+}
+
+.tx-detail__suffix {
+  color: var(--text-tertiary);
+}
+
+.tx-detail__amount {
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.tx-detail > .notice {
+  margin-bottom: 14px;
+}
+
+.tx-card {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: var(--surface-default);
+  box-shadow: 0 1px 3px rgba(16, 30, 60, 0.06);
+}
+
+.tx-card + .tx-card {
+  margin-top: 14px;
+}
+
+.tx-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tx-card__row:last-child {
+  border-bottom: 0;
+}
+
+.tx-card__label {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+.tx-card__value {
+  margin: 0;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.tx-card__copy {
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 0;
+  margin: 0;
+}
+
+.tx-card__copy-button {
+  text-align: right;
+}
+
+.tx-card__mono {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tx-detail__actions {
+  padding-top: 22px;
+}
+
+.tx-detail__actions .action-row {
+  height: 76px;
+  background: var(--surface-default);
+}
+
+.tx-detail__actions .action-row__tile {
+  background: var(--surface-subtle);
+}

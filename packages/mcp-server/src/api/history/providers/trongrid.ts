@@ -1,12 +1,13 @@
 /**
- * TronGrid `/v1/accounts/{address}/transactions` (+ `/trc20`). Independent
- * fallback for Tron. Cursor-based via `meta.fingerprint`; addresses in the
+ * TronGrid `/v1/accounts/{address}/transactions` (+ `/trc20`), the same host
+ * as Tron balances. Cursor-based via `meta.fingerprint`; addresses in the
  * raw transaction are hex (41…) and are re-encoded to base58 here.
  */
 
 import bs58check from "bs58check";
 import { httpJson } from "../../http.js";
-import { paced } from "../pace.js";
+import { logInfo } from "../../../log.js";
+import { paced, retryRateLimited } from "../pace.js";
 import {
   amountOf,
   asString,
@@ -162,10 +163,45 @@ export function mapTronGridTrc20(row: TronGridTrc20, address: string): SourceIte
  * Keyless TronGrid advertises 3 requests per second per IP, but after a few
  * violations it drops the IP to 1 rps and suspends it for ~5 s on each
  * further burst. Two sources × two pages in parallel trip that on every call,
- * so requests are spaced ≥1.1 s apart process-wide. Slower, but this is the
- * fallback: it has to answer, not to be fast.
+ * so requests are spaced ≥1.1 s apart process-wide. The generic HTTP retry
+ * would bypass that gate, so retries go through it too: a 429 waits out the
+ * suspension first, and a timeout or dropped connection is retried once.
+ *
+ * Measured keylessly: every fourth request never answers, whatever the gap
+ * between requests, while the rest take 0.15–0.6 s. A short timeout keeps
+ * each of those stalls to a few seconds.
  */
 const KEYLESS_GAP_MS = 1100;
+const KEYLESS_TIMEOUT_MS = 3000;
+const RATE_LIMIT_WAIT_MS = 5500;
+const RATE_LIMIT_ATTEMPTS = 1;
+
+async function gatedGet<T>(url: string, label: string, ctx: SourceContext): Promise<T> {
+  const once = () =>
+    retryRateLimited(
+      () =>
+        paced("trongrid", KEYLESS_GAP_MS, () =>
+          httpJson<T>(
+            url,
+            { method: "GET" },
+            { ...ctx.http, timeoutMs: Math.min(ctx.http.timeoutMs, KEYLESS_TIMEOUT_MS), retries: 0, label },
+          ),
+        ),
+      {
+        waitMs: RATE_LIMIT_WAIT_MS,
+        attempts: RATE_LIMIT_ATTEMPTS,
+        onRetry: (attempt) =>
+          logInfo("history.trongrid.rate_limited", { correlationId: ctx.correlationId, attempt, waitMs: RATE_LIMIT_WAIT_MS }),
+      },
+    );
+  try {
+    return await once();
+  } catch (e) {
+    const httpStatus = e instanceof Error && "status" in e;
+    if (httpStatus || ctx.http.retries < 1) throw e;
+    return once();
+  }
+}
 
 /**
  * A TronGrid fingerprint is bound to the exact query, `limit` included, so
@@ -187,13 +223,7 @@ function makeSource<T>(
         `${baseUrl}/v1/accounts/${encodeURIComponent(address)}/transactions${path}` +
         `?limit=${PAGE_SIZE}&order_by=block_timestamp,desc&only_confirmed=true` +
         (cursor ? `&fingerprint=${encodeURIComponent(cursor)}` : "");
-      const res = await paced("trongrid", KEYLESS_GAP_MS, () =>
-        httpJson<TronGridEnvelope<T>>(
-          url,
-          { method: "GET" },
-          { ...ctx.http, label: `history.trongrid${path || ".tx"}` },
-        ),
-      );
+      const res = await gatedGet<TronGridEnvelope<T>>(url, `history.trongrid${path || ".tx"}`, ctx);
       if (res.success === false || !Array.isArray(res.data)) {
         throw new Error(`trongrid${path}: ${res.error ?? "unexpected response"}`);
       }

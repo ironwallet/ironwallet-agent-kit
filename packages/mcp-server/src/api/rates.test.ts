@@ -4,6 +4,7 @@ import { ALL_NETWORKS } from "../networks.js";
 import {
   NATIVE_EXTERNAL_ID,
   findExternalIdInCatalog,
+  parseDailyChange,
   parseUsdRate,
   sameTokenAddress,
   type RatesResponse,
@@ -87,6 +88,13 @@ test("parseUsdRate handles currency key casing and missing data", () => {
   assert.equal(parseUsdRate({ ethereum: null }, "ethereum"), undefined);
   assert.equal(parseUsdRate({ ethereum: { usd: { value: 0 } } }, "ethereum"), undefined);
   assert.equal(parseUsdRate({ ethereum: { eur: { value: 5 } } }, "ethereum"), undefined);
+});
+
+test("parseDailyChange reads the percent change or null", () => {
+  assert.equal(parseDailyChange({ bitcoin: { usd: { value: 1, dailyChange: -0.6 } } }, "bitcoin"), -0.6);
+  assert.equal(parseDailyChange({ bitcoin: { USD: { value: 1, dailyChange: 0 } } }, "bitcoin"), 0);
+  assert.equal(parseDailyChange({ bitcoin: { usd: { value: 1 } } }, "bitcoin"), null);
+  assert.equal(parseDailyChange({ bitcoin: null }, "bitcoin"), null);
 });
 
 test("parseUsdRate flags expired rates without dropping them", () => {

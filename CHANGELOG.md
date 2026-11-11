@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-09-30
+
+### Added
+
+- New wallet manager (React app served by `open_wallet_manager`) with light and dark themes: wallets list, create, import, rename and two-step delete; backup with a recovery phrase order check; portfolio with balances, 24h change, token list and visibility toggles; receive QR; transaction history across networks with filters and a transaction detail page.
+- History kind `blockscout` for Blockscout REST v2 (`…/api/v2`). Blockscout URLs listed under kind `etherscan` are read through v2 as well.
+
+### Changed
+
+- `create_wallets`: `backup_url` opens the Backup page of the new manager.
+- Token visibility and sorting are manager preferences only; `list_wallets` and `get_balance` still return every token.
+- Keyless TronScan and TronGrid requests are paced to stay under their rate limits; TronGrid retries a stalled request once.
+- Each history page is fetched once per `get_transaction_history` call.
+- Tron transaction links point to tronscanner.org.
+
+### Removed
+
+- The legacy HTML wallet manager pages. `/qr` for `get_deposit_qr` stays.
+
 ## [1.2.1] - 2026-09-08
 
 ### Added
@@ -103,6 +122,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Release of the IronWallet agent kit and `@ironwallet/mcp-server`.
 
+[1.3.0]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/ironwallet/ironwallet-agent-kit/compare/v1.1.0...v1.1.1

@@ -348,3 +348,14 @@ export async function renderDepositQrPng(
 
   return PNG.sync.write(out);
 }
+
+/** The code alone, no quiet zone or caption, for a page that lays out the text itself. */
+export async function renderPlainQrPng(payload: string): Promise<Buffer> {
+  return QRCode.toBuffer(payload, {
+    errorCorrectionLevel: "M",
+    type: "png",
+    margin: 0,
+    width: 464,
+    color: { dark: "#16233C", light: "#FFFFFF" },
+  });
+}

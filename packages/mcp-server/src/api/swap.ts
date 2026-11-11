@@ -22,6 +22,11 @@ export interface SwapSide {
   asset: SwapAsset;
   address: string;
   amount?: string;
+  /**
+   * Sell side, TON only: 32-byte ed25519 key hex. wallet-service cannot read it
+   * from chain for a wallet that has not been deployed yet.
+   */
+  publicKey?: string;
 }
 
 export interface SwapCallOpts {
@@ -70,12 +75,13 @@ function assetToJson(asset: SwapAsset): Record<string, unknown> {
   return body;
 }
 
-function sideToJson(side: SwapSide): Record<string, unknown> {
+export function sideToJson(side: SwapSide): Record<string, unknown> {
   const body: Record<string, unknown> = {
     asset: assetToJson(side.asset),
     address: side.address,
   };
   if (side.amount !== undefined) body.amount = side.amount;
+  if (side.publicKey) body.publicKey = side.publicKey;
   return body;
 }
 

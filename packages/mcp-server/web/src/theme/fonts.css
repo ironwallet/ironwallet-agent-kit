@@ -1,0 +1,41 @@
+/* Bundled locally (CSP: font-src 'self'); latin only until more languages ship. */
+
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../../../node_modules/@fontsource/roboto/files/roboto-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../../../node_modules/@fontsource/roboto/files/roboto-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../../../node_modules/@fontsource/roboto/files/roboto-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../../node_modules/@fontsource/roboto/files/roboto-latin-700-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Roboto Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../../../node_modules/@fontsource/roboto-mono/files/roboto-mono-latin-400-normal.woff2") format("woff2");
+}

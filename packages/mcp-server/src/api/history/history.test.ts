@@ -9,7 +9,13 @@ import {
   toBigInt,
   tokenAsset,
 } from "./normalize.js";
-import { collapseCarrierCalls } from "./index.js";
+import { buildProvider, collapseCarrierCalls, memoizePages } from "./index.js";
+import {
+  blockscoutProvider,
+  blockscoutV2Base,
+  mapBlockscoutTokenTransfer,
+  mapBlockscoutTx,
+} from "./providers/blockscout.js";
 import { mapNativeTx, mapTokenTx, unwrapEtherscanResult } from "./providers/etherscan.js";
 import { mapNodeRealTransfer } from "./providers/nodereal.js";
 import { mapTronScanTrc20, mapTronScanTx } from "./providers/tronscan.js";
@@ -296,6 +302,133 @@ test("etherscan empty result envelope is not an error", () => {
   );
   assert.throws(() => unwrapEtherscanResult({ status: "0", message: "NOTOK", result: "Max rate limit" }, "x"), /Max rate/);
 });
+
+test("blockscout v2: native transfer, failed call, pending, ERC-20 transfer", () => {
+  const incoming = mapBlockscoutTx(
+    {
+      hash: "0x5a79",
+      timestamp: "2026-06-26T16:57:35.000000Z",
+      block_number: 25403146,
+      from: { hash: "0x498d25694f8a29C0d49F3fdf5111754391F83EF4" },
+      to: { hash: ME },
+      value: "852705998928109",
+      fee: { value: "13475938140000" },
+      status: "ok",
+      result: "success",
+      raw_input: "0x",
+    },
+    ME,
+    "ethereum",
+  )!;
+  assert.equal(incoming.item.kind, "transfer");
+  assert.equal(incoming.item.direction, "in");
+  assert.equal(incoming.item.status, "confirmed");
+  assert.equal(incoming.item.fee, null);
+  assert.equal(incoming.item.amount.formatted, "0.000852705998928109");
+  assert.equal(incoming.item.timestamp, "2026-06-26T16:57:35.000Z");
+  assert.equal(incoming.item.block, 25403146);
+
+  const failed = mapBlockscoutTx(
+    { hash: "0x2", timestamp: "2026-06-26T17:00:00Z", block_number: 1, from: { hash: ME.toLowerCase() }, to: { hash: "0xc0" }, value: "0", fee: { value: "21" }, status: "error", result: "Reverted", raw_input: "0xa9059cbb" },
+    ME,
+    "base",
+  )!;
+  assert.equal(failed.item.kind, "contract_call");
+  assert.equal(failed.item.status, "failed");
+  assert.equal(failed.item.fee?.raw, "21");
+  assert.equal(failed.item.asset.symbol, "ETH");
+
+  const pending = mapBlockscoutTx({ hash: "0x3", timestamp: null, block_number: null, status: null, result: "pending", from: { hash: ME }, to: { hash: "0xc0" }, value: "1" }, ME, "polygon")!;
+  assert.equal(pending.item.status, "pending");
+  assert.ok(pending.ts > 0, "pending rows sort to the top");
+
+  const token = mapBlockscoutTokenTransfer(
+    {
+      transaction_hash: "0xfac3",
+      timestamp: "2026-09-29T08:21:23.000000Z",
+      block_number: 26081892,
+      from: { hash: ME },
+      to: { hash: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" },
+      token: { address_hash: "0x3282", symbol: "USDC", decimals: "6" },
+      total: { value: "1500000", decimals: "6" },
+    },
+    ME,
+  )!;
+  assert.equal(token.item.kind, "token_transfer");
+  assert.equal(token.item.direction, "out");
+  assert.equal(token.item.asset.contractAddress, "0x3282");
+  assert.equal(token.item.amount.formatted, "1.5");
+  assert.equal(mapBlockscoutTokenTransfer({ transaction_hash: "0x1" }, ME), null);
+});
+
+test("blockscout: kind blockscout and Etherscan-kind Blockscout URLs are read via REST v2", async () => {
+  assert.equal(blockscoutV2Base("https://eth.blockscout.com/api"), "https://eth.blockscout.com/api/v2");
+  assert.equal(blockscoutV2Base("https://eth.blockscout.com/api/v2"), "https://eth.blockscout.com/api/v2");
+  assert.equal(blockscoutV2Base("https://api.routescan.io/v2/network/mainnet/evm/43114/etherscan/api"), null);
+  assert.equal(buildProvider({ kind: "etherscan", url: "https://base.blockscout.com/api" }, "base", ME)?.kind, "blockscout");
+  assert.equal(buildProvider({ kind: "blockscout", url: "https://eth.blockscout.com/api/v2" }, "ethereum", ME)?.kind, "blockscout");
+  assert.equal(buildProvider({ kind: "blockscout", url: "https://eth.blockscout.com/api/v2" }, "tron", ME), null);
+  assert.equal(
+    buildProvider({ kind: "etherscan", url: "https://api.routescan.io/v2/network/mainnet/evm/1/etherscan/api" }, "ethereum", ME)?.kind,
+    "etherscan",
+  );
+
+  const urls: string[] = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    urls.push(url);
+    const body = url.includes("/token-transfers")
+      ? { items: [], next_page_params: null }
+      : url.includes("block_number=")
+        ? { items: [{ hash: "0xold", timestamp: "2026-01-01T00:00:00Z", block_number: 1, status: "ok", from: { hash: "0xa" }, to: { hash: ME }, value: "1" }], next_page_params: null }
+        : { items: [{ hash: "0xnew", timestamp: "2026-02-01T00:00:00Z", block_number: 2, status: "ok", from: { hash: "0xa" }, to: { hash: ME }, value: "1" }], next_page_params: { block_number: 2, index: 0, items_count: 50 } };
+    return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+  }) as typeof fetch;
+  try {
+    const { sources } = blockscoutProvider("https://eth.blockscout.com/api/v2", ME, "ethereum");
+    const merged = await mergeSources(sources, 1, undefined, CTX);
+    assert.deepEqual(merged.items.map((i) => i.hash), ["0xnew"]);
+    const next = await mergeSources(sources, 1, { s: merged.state, b: merged.boundary }, CTX);
+    assert.deepEqual(next.items.map((i) => i.hash), ["0xold"]);
+    assert.equal(next.hasMore, false);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  assert.ok(urls.some((u) => u.endsWith(`/addresses/${ME}/transactions?block_number=2&index=0&items_count=50`)));
+  assert.ok(urls.some((u) => u.endsWith(`/addresses/${ME}/token-transfers?type=ERC-20`)));
+  await assert.rejects(sourcesFetch("{bad"), /Invalid cursor/);
+});
+
+test("memoizePages fetches each page once per call and retries a failed page", async () => {
+  let calls = 0;
+  let fail = true;
+  const [source] = memoizePages([
+    {
+      name: "s",
+      async fetchPage(cursor) {
+        calls++;
+        if (cursor === "bad" && fail) {
+          fail = false;
+          throw new Error("boom");
+        }
+        return { items: [], next: null };
+      },
+    },
+  ]);
+  await source.fetchPage(null, 20, CTX);
+  await source.fetchPage(null, 20, CTX);
+  assert.equal(calls, 1);
+  await source.fetchPage(null, 10, CTX);
+  assert.equal(calls, 2, "a different page size is a different request");
+  await assert.rejects(source.fetchPage("bad", 20, CTX), /boom/);
+  await source.fetchPage("bad", 20, CTX);
+  assert.equal(calls, 4, "a failed page is not cached");
+});
+
+function sourcesFetch(cursor: string) {
+  return blockscoutProvider("https://eth.blockscout.com/api/v2", ME, "ethereum").sources[0].fetchPage(cursor, 20, CTX);
+}
 
 test("nodereal rows: hex values, seconds timestamps, BEP-20 decimals", () => {
   const t = mapNodeRealTransfer(

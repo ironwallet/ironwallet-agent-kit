@@ -5,7 +5,8 @@
  *   (hex or base64). The client ed25519-signs each cell hash, wraps the signed
  *   body in an external message (with wallet init when seqno == 0), and puts the
  *   external-message BoC hex into both `signature` and `txData` of the forward
- *   payload.
+ *   payload. `txID` is the normalized message hash: estimate leaves it empty
+ *   because it depends on the signature.
  *
  * Estimate must include `fromPublicKey` (32-byte ed25519 pubkey hex) — same as
  * mobile `RelayV2EstimateRequest.fromPublicKey` for NetType.ton.
@@ -67,6 +68,26 @@ export function tonPublicKeyHex(mnemonic: string): string {
   return Buffer.from(ed25519.getPublicKey(seed)).toString("hex");
 }
 
+/**
+ * Normalized external-in message hash (TEP-467), lowercase hex. State init is
+ * left out, so the value is the same with or without wallet deployment. Matches
+ * mobile `TonMessageCodec.normalizedExternalMessageHash` and wallet-service
+ * `WalletV4R2Utils.NormalizeHash`, which recomputes it from the signed BoC.
+ */
+export function tonNormalizedMessageHash(destination: Address, body: Cell): string {
+  return beginCell()
+    .storeUint(2, 2) // ext_in_msg_info$10
+    .storeUint(0, 2) // src: addr_none
+    .storeAddress(destination)
+    .storeCoins(0) // import_fee
+    .storeBit(false) // no state init
+    .storeBit(true) // body as a reference
+    .storeRef(body)
+    .endCell()
+    .hash()
+    .toString("hex");
+}
+
 function secretKeyFromSeed(seed: Buffer): Buffer {
   const pub = Buffer.from(ed25519.getPublicKey(seed));
   return Buffer.concat([seed, pub]);
@@ -121,7 +142,7 @@ export function signTon(
       .toString("hex");
 
     signed.push({
-      txID: tx.txId ?? "",
+      txID: tonNormalizedMessageHash(destination, signedBody),
       signature: externalBocHex,
       txData: externalBocHex,
       transactionId: tx.transactionId,

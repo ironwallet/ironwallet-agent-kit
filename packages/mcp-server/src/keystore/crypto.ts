@@ -18,6 +18,10 @@ const SCRYPT_N = 1 << 15; // 32768
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 const KEY_LEN = 32;
+/** Full 128-bit GCM tag. Without authTagLength Node accepts truncated tags down to 4 bytes. */
+const TAG_LEN = 16;
+const DECRYPT_FAILED =
+  "Failed to decrypt wallet. Wrong passphrase or corrupted keystore.";
 
 export interface EncryptedBlob {
   v: 1;
@@ -40,7 +44,7 @@ export function encryptSecret(plaintext: string, passphrase: string): string {
   const salt = randomBytes(16);
   const iv = randomBytes(12);
   const key = deriveKey(passphrase, salt);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const cipher = createCipheriv("aes-256-gcm", key, iv, { authTagLength: TAG_LEN });
   const data = Buffer.concat([
     cipher.update(plaintext, "utf8"),
     cipher.final(),
@@ -62,16 +66,15 @@ export function decryptSecret(blobJson: string, passphrase: string): string {
   const iv = Buffer.from(blob.iv, "base64");
   const tag = Buffer.from(blob.tag, "base64");
   const data = Buffer.from(blob.data, "base64");
+  if (tag.length !== TAG_LEN) throw new Error(DECRYPT_FAILED);
   const key = deriveKey(passphrase, salt);
-  const decipher = createDecipheriv("aes-256-gcm", key, iv);
+  const decipher = createDecipheriv("aes-256-gcm", key, iv, { authTagLength: TAG_LEN });
   decipher.setAuthTag(tag);
   try {
     return Buffer.concat([decipher.update(data), decipher.final()]).toString(
       "utf8",
     );
   } catch {
-    throw new Error(
-      "Failed to decrypt wallet. Wrong passphrase or corrupted keystore.",
-    );
+    throw new Error(DECRYPT_FAILED);
   }
 }

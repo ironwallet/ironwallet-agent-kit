@@ -4,8 +4,13 @@ dist/
 *.tsbuildinfo
 
 
+# Wallet manager dev server: capability URL of the running local manager
+web/.dev-manager.json
+
 # Pack / local artifacts
 *.tgz
+# Generated from package-lock.json by CI right before npm publish; a local copy would shadow the lockfile
+npm-shrinkwrap.json
 .git-plugin-push/
 cursor-plugin/
 presentation/

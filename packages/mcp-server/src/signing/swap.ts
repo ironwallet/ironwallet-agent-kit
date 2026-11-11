@@ -37,10 +37,10 @@ function evmTxHash(signedHex: string): string {
 /**
  * Map signer output → SWP execute DTO. Must match mobile forwardToSwap:
  *   EVM / Tron / Bitcoin / Solana: signedTx=signature, txData=original unsigned
- *   TON:  signedTx=txData=external message BoC hex
+ *   TON:  signedTx=txData=external message BoC hex, txHash=txId=normalized message hash
  *   XRP:  signedTx=TxnSignature, txData=signed blob
  */
-function mapSigned(
+export function mapSigned(
   network: NetworkId,
   original: SwapTxToSign[],
   signed: SignedTransaction[],
@@ -51,14 +51,16 @@ function mapSigned(
     if (!orig.txData) continue;
     const s = signed[si++];
     if (!s) throw new Error("Signer returned fewer transactions than expected.");
-    const txId = orig.txId ?? s.txID ?? "";
+    let txId = orig.txId ?? s.txID ?? "";
     const signedTx = s.signature;
     let txData: string;
     let txHash: string;
     if (network === "ton") {
-      // Mobile: both fields are the signed external-message BoC.
+      // Mobile: both fields are the signed external-message BoC. SWP execute
+      // rejects an empty txHash, and create always returns txId "" for TON.
       txData = signedTx;
-      txHash = s.txID || txId;
+      txHash = s.txID;
+      txId = s.txID;
     } else if (network === "xrp") {
       txData = s.txData; // signed blob
       txHash = s.txID || txId;

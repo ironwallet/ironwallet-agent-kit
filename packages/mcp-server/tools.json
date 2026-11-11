@@ -1,7 +1,7 @@
 {
   "package": "@ironwallet/mcp-server",
   "mcpName": "io.ironwallet/mcp-server",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "tools": [
     {
       "name": "get_runtime_info",

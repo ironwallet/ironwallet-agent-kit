@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "ironwallet-mcp",
   "display_name": "IronWallet",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Non-custodial IronWallet MCP: seeds stay encrypted on the host. Balances, local signing, transfers, and swaps across 10+ networks.",
   "long_description": "The IronWallet MCP server provides AI agents with secure access to a non-custodial wallet. Seed phrases remain encrypted locally and never leave the host machine. Agents can retrieve balances, sign transactions, transfer tokens across 10+ blockchain networks.",
   "author": {

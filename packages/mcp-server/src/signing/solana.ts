@@ -17,7 +17,7 @@
 
 import bs58 from "bs58";
 import { ed25519 } from "@noble/curves/ed25519.js";
-import { getConfig } from "../config.js";
+import { withEndpoint } from "../api/endpoints.js";
 import { httpJson } from "../api/http.js";
 import type { SignContext, SignedTransaction, TransactionToSign } from "./types.js";
 import { logInfo } from "../log.js";
@@ -41,23 +41,25 @@ function decodeCompactU16(buf: Uint8Array, offset: number): [number, number] {
 }
 
 async function latestBlockhash(): Promise<Uint8Array> {
-  const cfg = getConfig();
-  const res = await httpJson<{ result?: { value?: { blockhash?: string } } }>(
-    cfg.solanaRpcUrl,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getLatestBlockhash",
-        params: [{ commitment: "finalized" }],
-      }),
-    },
-    { retry: true },
-  );
-  const bh = res.result?.value?.blockhash;
-  if (!bh) throw new Error("Failed to fetch Solana latest blockhash.");
+  const bh = await withEndpoint("solana", async (url) => {
+    const res = await httpJson<{ result?: { value?: { blockhash?: string } } }>(
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getLatestBlockhash",
+          params: [{ commitment: "finalized" }],
+        }),
+      },
+      { retry: true },
+    );
+    const blockhash = res.result?.value?.blockhash;
+    if (!blockhash) throw new Error("Failed to fetch Solana latest blockhash.");
+    return blockhash;
+  });
   return bs58.decode(bh);
 }
 

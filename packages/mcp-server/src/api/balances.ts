@@ -9,12 +9,14 @@
  *     with on-chain get_wallet_address + get_wallet_data as fallback.
  */
 
-import { Contract, formatUnits, getAddress } from "ethers";
+import { Contract, formatUnits, getAddress, type JsonRpcProvider } from "ethers";
 import { Address, beginCell, Cell, Dictionary, TonClient } from "@ton/ton";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { getConfig, isEvmNetwork, type NetworkId } from "../config.js";
+import { withEndpoint } from "./endpoints.js";
 import { httpJson } from "./http.js";
-import { providerFor } from "./rpc.js";
+import { toncenterCall, trongridCall } from "./keyless.js";
+import { withEvmProvider } from "./rpc.js";
 import { logError, logInfo } from "../log.js";
 
 export interface BalanceResult {
@@ -58,10 +60,18 @@ async function getEvmBalance(
   address: string,
   contractAddress?: string,
 ): Promise<BalanceResult> {
-  const provider = providerFor(network);
   const owner = getAddress(address);
+  const token = contractAddress ? getAddress(contractAddress) : undefined;
+  return withEvmProvider(network, (provider) => readEvmBalance(provider, network, owner, token));
+}
 
-  if (!contractAddress) {
+async function readEvmBalance(
+  provider: JsonRpcProvider,
+  network: NetworkId,
+  owner: string,
+  token: string | undefined,
+): Promise<BalanceResult> {
+  if (!token) {
     const raw = await provider.getBalance(owner);
     return {
       network,
@@ -74,7 +84,6 @@ async function getEvmBalance(
     };
   }
 
-  const token = getAddress(contractAddress);
   const erc20 = new Contract(token, ERC20_ABI, provider);
   const [raw, decimals, symbol] = await Promise.all([
     erc20.balanceOf(owner) as Promise<bigint>,
@@ -124,40 +133,59 @@ async function tronCall(
   selector: string,
   parameter: string,
 ): Promise<string | undefined> {
-  const cfg = getConfig();
-  const res = await httpJson<TronTriggerResult>(
-    `${cfg.tronApiUrl}/wallet/triggerconstantcontract`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        owner_address: ownerAddress,
-        contract_address: contractAddress,
-        function_selector: selector,
-        parameter,
-        visible: true,
-      }),
-    },
-    { retry: true }, // read-only constant call
+  const res = await trongridCall(() =>
+    withEndpoint("tron", (base) =>
+      httpJson<TronTriggerResult>(
+        `${base}/wallet/triggerconstantcontract`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            owner_address: ownerAddress,
+            contract_address: contractAddress,
+            function_selector: selector,
+            parameter,
+            visible: true,
+          }),
+        },
+        { retry: true, retry429: false }, // read-only constant call
+      ),
+    ),
   );
   return res.constant_result?.[0];
+}
+
+/** decimals() and symbol() of a TRC-20 never change; reading them costs two gated calls. */
+const tronTokenMeta = new Map<string, { decimals: number; symbol: string }>();
+
+async function tronTokenInfo(owner: string, contractAddress: string): Promise<{ decimals: number; symbol: string }> {
+  const cached = tronTokenMeta.get(contractAddress);
+  if (cached) return cached;
+  const decHex = await tronCall(owner, contractAddress, "decimals()", "");
+  const symHex = await tronCall(owner, contractAddress, "symbol()", "");
+  const symbol = decodeAbiString(symHex);
+  const info = { decimals: decHex ? Number(hexWordToBigInt(decHex)) : 6, symbol: symbol ?? "TRC20" };
+  if (decHex && symbol) tronTokenMeta.set(contractAddress, info);
+  return info;
 }
 
 async function getTronBalance(
   address: string,
   contractAddress?: string,
 ): Promise<BalanceResult> {
-  const cfg = getConfig();
-
   if (!contractAddress) {
-    const account = await httpJson<TronAccount>(
-      `${cfg.tronApiUrl}/wallet/getaccount`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, visible: true }),
-      },
-      { retry: true }, // read-only account lookup
+    const account = await trongridCall(() =>
+      withEndpoint("tron", (base) =>
+        httpJson<TronAccount>(
+          `${base}/wallet/getaccount`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ address, visible: true }),
+          },
+          { retry: true, retry429: false }, // read-only account lookup
+        ),
+      ),
     );
     const raw = BigInt(account.balance ?? 0);
     return {
@@ -176,14 +204,9 @@ async function getTronBalance(
   // address. We ask the node to resolve it by passing the base58 through the
   // dedicated helper below.
   const paramWord = await tronBase58ToAbiWord(address);
-  const [balHex, decHex, symHex] = await Promise.all([
-    tronCall(address, contractAddress, "balanceOf(address)", paramWord),
-    tronCall(address, contractAddress, "decimals()", ""),
-    tronCall(address, contractAddress, "symbol()", ""),
-  ]);
+  const balHex = await tronCall(address, contractAddress, "balanceOf(address)", paramWord);
+  const { decimals, symbol } = await tronTokenInfo(address, contractAddress);
   const raw = hexWordToBigInt(balHex);
-  const decimals = decHex ? Number(hexWordToBigInt(decHex)) : 6;
-  const symbol = decodeAbiString(symHex) ?? "TRC20";
   return {
     network: "tron",
     address,
@@ -193,6 +216,12 @@ async function getTronBalance(
     raw: raw.toString(),
     formatted: formatUnits(raw, decimals),
   };
+}
+
+/** Raw TRC-20 `balanceOf(owner)`, one constant call. */
+export async function getTronTokenBalance(owner: string, contractAddress: string): Promise<bigint> {
+  const paramWord = await tronBase58ToAbiWord(owner);
+  return hexWordToBigInt(await tronCall(owner, contractAddress, "balanceOf(address)", paramWord));
 }
 
 /**
@@ -207,26 +236,41 @@ async function tronBase58ToAbiWord(base58: string): Promise<string> {
   return evm20.padStart(64, "0");
 }
 
-/** Native UTXO balance via an Esplora REST API (blockstream / litecoinspace style). */
-async function getEsploraBalance(
-  network: "bitcoin" | "litecoin",
-  apiBase: string,
-  address: string,
-): Promise<BalanceResult> {
+type UtxoNetwork = "bitcoin" | "litecoin" | "doge";
+
+/** BlockCypher bases end in `/v1/<coin>/<chain>` (…/v1/ltc/main); other UTXO hosts speak Esplora. */
+const BLOCKCYPHER_BASE = /\/v1\/[a-z]+\/[a-z0-9]+$/i;
+
+/** Base units held by `address`, confirmed plus mempool, in whichever API the host speaks. */
+async function utxoSats(network: UtxoNetwork, base: string, address: string): Promise<bigint> {
+  if (network === "doge" || BLOCKCYPHER_BASE.test(base)) {
+    interface BlockCypherBal {
+      balance?: number;
+      final_balance?: number;
+    }
+    const info = await httpJson<BlockCypherBal>(`${base}/addrs/${encodeURIComponent(address)}/balance`, {
+      method: "GET",
+    });
+    return BigInt(info.final_balance ?? info.balance ?? 0);
+  }
   interface EsploraAddr {
     chain_stats?: { funded_txo_sum?: number; spent_txo_sum?: number };
     mempool_stats?: { funded_txo_sum?: number; spent_txo_sum?: number };
   }
-  const info = await httpJson<EsploraAddr>(`${apiBase}/address/${address}`, {
-    method: "GET",
-  });
+  const info = await httpJson<EsploraAddr>(`${base}/address/${address}`, { method: "GET" });
   const chain = info.chain_stats ?? {};
   const mem = info.mempool_stats ?? {};
-  const sats =
+  return (
     BigInt(chain.funded_txo_sum ?? 0) -
     BigInt(chain.spent_txo_sum ?? 0) +
     BigInt(mem.funded_txo_sum ?? 0) -
-    BigInt(mem.spent_txo_sum ?? 0);
+    BigInt(mem.spent_txo_sum ?? 0)
+  );
+}
+
+/** Native UTXO balance: Esplora (blockstream / litecoinspace) or BlockCypher, per endpoint. */
+async function getUtxoBalance(network: UtxoNetwork, address: string): Promise<BalanceResult> {
+  const sats = await withEndpoint(network, (base) => utxoSats(network, base, address));
   return {
     network,
     address,
@@ -238,59 +282,27 @@ async function getEsploraBalance(
   };
 }
 
-async function getBitcoinBalance(address: string): Promise<BalanceResult> {
-  return getEsploraBalance("bitcoin", getConfig().bitcoinApiUrl, address);
-}
-
-async function getLitecoinBalance(address: string): Promise<BalanceResult> {
-  return getEsploraBalance("litecoin", getConfig().litecoinApiUrl, address);
-}
-
-/** Dogecoin native balance via BlockCypher (…/addrs/{addr}/balance). */
-async function getDogeBalance(address: string): Promise<BalanceResult> {
-  const cfg = getConfig();
-  interface BlockCypherBal {
-    balance?: number;
-    final_balance?: number;
-    unconfirmed_balance?: number;
-  }
-  const info = await httpJson<BlockCypherBal>(
-    `${cfg.dogeApiUrl}/addrs/${encodeURIComponent(address)}/balance`,
-    { method: "GET" },
-  );
-  // Prefer confirmed+unconfirmed final_balance when present.
-  const koinu = BigInt(info.final_balance ?? info.balance ?? 0);
-  return {
-    network: "doge",
-    address,
-    contractAddress: null,
-    symbol: "DOGE",
-    decimals: 8,
-    raw: koinu.toString(),
-    formatted: formatUnits(koinu, 8),
-  };
-}
-
-/** JSON-RPC helper for chains that speak the standard JSON-RPC 2.0 envelope. */
-async function jsonRpc<T>(url: string, method: string, params: unknown): Promise<T> {
-  const res = await httpJson<{ result?: T; error?: { message?: string } }>(
-    url,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-    },
-    { retry: true },
-  );
-  if (res.error) throw new Error(`RPC ${method} failed: ${res.error.message}`);
-  return res.result as T;
+/** Solana JSON-RPC 2.0 call on the first healthy endpoint. */
+async function solanaRpc<T>(method: string, params: unknown): Promise<T> {
+  return withEndpoint("solana", async (url) => {
+    const res = await httpJson<{ result?: T; error?: { message?: string } }>(
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      },
+      { retry: true },
+    );
+    if (res.error) throw new Error(`RPC ${method} failed: ${res.error.message}`);
+    return res.result as T;
+  });
 }
 
 /** Solana native SOL (lamports) or SPL token balance for `mint`. */
 async function getSolanaBalance(address: string, mint?: string): Promise<BalanceResult> {
   if (mint) return getSolanaSplBalance(address, mint);
-  const cfg = getConfig();
-  const res = await jsonRpc<{ value: number }>(cfg.solanaRpcUrl, "getBalance", [address]);
+  const res = await solanaRpc<{ value: number }>("getBalance", [address]);
   const lamports = BigInt(res?.value ?? 0);
   return {
     network: "solana",
@@ -318,12 +330,10 @@ interface SplParsedData {
 }
 
 async function getSolanaMintDecimals(mint: string): Promise<number> {
-  const cfg = getConfig();
-  const res = await jsonRpc<{ value?: { data?: SplParsedData } | null }>(
-    cfg.solanaRpcUrl,
-    "getAccountInfo",
-    [mint, { encoding: "jsonParsed", commitment: "confirmed" }],
-  );
+  const res = await solanaRpc<{ value?: { data?: SplParsedData } | null }>("getAccountInfo", [
+    mint,
+    { encoding: "jsonParsed", commitment: "confirmed" },
+  ]);
   const parsed = res?.value?.data?.parsed;
   if (parsed?.type === "mint" && typeof parsed.info?.decimals === "number") {
     return parsed.info.decimals;
@@ -333,11 +343,10 @@ async function getSolanaMintDecimals(mint: string): Promise<number> {
 
 /** Sum SPL token accounts for `mint`. Missing ATA is a zero balance, not an error. */
 async function getSolanaSplBalance(address: string, mint: string): Promise<BalanceResult> {
-  const cfg = getConfig();
   const [accounts, decimals] = await Promise.all([
-    jsonRpc<{
+    solanaRpc<{
       value?: Array<{ account?: { data?: SplParsedData } }>;
-    }>(cfg.solanaRpcUrl, "getTokenAccountsByOwner", [
+    }>("getTokenAccountsByOwner", [
       address,
       { mint },
       { encoding: "jsonParsed", commitment: "confirmed" },
@@ -364,9 +373,12 @@ async function getSolanaSplBalance(address: string, mint: string): Promise<Balan
 async function getTonBalance(address: string, jettonMaster?: string): Promise<BalanceResult> {
   if (jettonMaster) return getTonJettonBalance(address, jettonMaster);
   const cfg = getConfig();
-  const res = await httpJson<{ ok?: boolean; result?: string; error?: string }>(
-    `${cfg.tonApiUrl}/getAddressBalance?address=${encodeURIComponent(address)}`,
-    { method: "GET" },
+  const res = await toncenterCall(() =>
+    httpJson<{ ok?: boolean; result?: string; error?: string }>(
+      `${cfg.tonApiUrl}/getAddressBalance?address=${encodeURIComponent(address)}`,
+      { method: "GET", headers: tonApiHeaders() },
+      { retry429: false },
+    ),
   );
   if (res.ok === false) throw new Error(`TON balance failed: ${res.error}`);
   const nano = BigInt(res.result ?? "0");
@@ -454,10 +466,12 @@ async function getTonJettonBalanceIndexed(
     `&jetton_address=${encodeURIComponent(jettonMaster)}&limit=16`;
   let res: ToncenterV3JettonWallets;
   try {
-    res = await httpJson<ToncenterV3JettonWallets>(
-      url,
-      { method: "GET", headers: tonApiHeaders() },
-      { retry: true, label: "ton.jetton.wallets" },
+    res = await toncenterCall(() =>
+      httpJson<ToncenterV3JettonWallets>(
+        url,
+        { method: "GET", headers: tonApiHeaders() },
+        { retry: true, retry429: false, label: "ton.jetton.wallets" },
+      ),
     );
   } catch {
     return null;
@@ -552,7 +566,7 @@ async function jettonDecimalsAndSymbol(
   master: Address,
 ): Promise<{ decimals: number; symbol: string }> {
   try {
-    const data = await client.runMethod(master, "get_jetton_data");
+    const data = await toncenterCall(() => client.runMethod(master, "get_jetton_data"));
     data.stack.readBigNumber();
     data.stack.readNumber();
     data.stack.readAddress();
@@ -586,14 +600,14 @@ async function getTonJettonBalance(owner: string, jettonMaster: string): Promise
   const ownerAddr = Address.parse(owner);
   const masterAddr = Address.parse(jettonMaster);
   const ownerCell = beginCell().storeAddress(ownerAddr).endCell();
-  const walletRes = await client.runMethod(masterAddr, "get_wallet_address", [
-    { type: "slice", cell: ownerCell },
-  ]);
+  const walletRes = await toncenterCall(() =>
+    client.runMethod(masterAddr, "get_wallet_address", [{ type: "slice", cell: ownerCell }]),
+  );
   const jettonWallet = walletRes.stack.readAddress();
   const meta = await jettonDecimalsAndSymbol(client, masterAddr);
   let raw = 0n;
   try {
-    const walletData = await client.runMethod(jettonWallet, "get_wallet_data");
+    const walletData = await toncenterCall(() => client.runMethod(jettonWallet, "get_wallet_data"));
     raw = walletData.stack.readBigNumber();
   } catch (e) {
     if (!isTonAccountUndeployed(e)) throw e;
@@ -612,22 +626,23 @@ async function getTonJettonBalance(owner: string, jettonMaster: string): Promise
 
 /** XRP native balance (drops) via account_info. Unfunded accounts read as 0. */
 async function getXrpBalance(address: string): Promise<BalanceResult> {
-  const cfg = getConfig();
   interface XrpInfo {
     account_data?: { Balance?: string };
     error?: string;
   }
-  const res = await httpJson<{ result?: XrpInfo }>(
-    cfg.xrpRpcUrl,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        method: "account_info",
-        params: [{ account: address, ledger_index: "validated" }],
-      }),
-    },
-    { retry: true },
+  const res = await withEndpoint("xrp", (url) =>
+    httpJson<{ result?: XrpInfo }>(
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          method: "account_info",
+          params: [{ account: address, ledger_index: "validated" }],
+        }),
+      },
+      { retry: true },
+    ),
   );
   const info = res.result ?? {};
   // actNotFound => account not yet funded => zero balance.
@@ -661,13 +676,9 @@ export async function getBalance(
           result = await getTronBalance(address, contractAddress);
           break;
         case "bitcoin":
-          result = await getBitcoinBalance(address);
-          break;
         case "litecoin":
-          result = await getLitecoinBalance(address);
-          break;
         case "doge":
-          result = await getDogeBalance(address);
+          result = await getUtxoBalance(network, address);
           break;
         case "solana":
           result = await getSolanaBalance(address, contractAddress);

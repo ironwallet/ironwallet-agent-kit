@@ -17,6 +17,7 @@ import {
   unlinkSync,
   writeSync,
 } from "node:fs";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { getConfig } from "../config.js";
 import { restrictPrivateFile } from "../restrict-private-file.js";
@@ -105,6 +106,43 @@ export function getEntry(name: string): WalletEntry | undefined {
 }
 
 /**
+ * Handle for the wallet manager UI. Derived from the encrypted seed blob (fresh
+ * salt per wallet), so it needs no stored field, survives renames, and reveals
+ * nothing about the seed.
+ */
+export function walletId(entry: Pick<WalletEntry, "encSeed">): string {
+  return createHash("sha256").update(entry.encSeed).digest("hex").slice(0, 16);
+}
+
+export function getEntryById(id: string): WalletEntry | undefined {
+  return loadKeystore().wallets.find((w) => walletId(w) === id);
+}
+
+/** A rejected user input (name, phrase). The message is safe to show and never echoes a phrase. */
+export class KeystoreInputError extends Error {}
+
+export const WALLET_NAME_MAX = 40;
+
+/** Trim and validate a name typed in the manager. */
+export function normalizeWalletName(raw: string): string {
+  const trimmed = raw.trim();
+  if (/\p{Cc}/u.test(trimmed)) throw new KeystoreInputError("The name contains invalid characters.");
+  const name = trimmed.replace(/ +/g, " ");
+  if (!name) throw new KeystoreInputError("Enter a wallet name.");
+  if (name.length > WALLET_NAME_MAX) {
+    throw new KeystoreInputError(`Use at most ${WALLET_NAME_MAX} characters.`);
+  }
+  return name;
+}
+
+/** Names are what the agent passes as `wallet`, so they must not differ only by case. */
+function assertNameFree(ks: KeystoreFile, name: string, except?: WalletEntry): void {
+  const lower = name.toLowerCase();
+  const taken = ks.wallets.find((w) => w !== except && w.name.toLowerCase() === lower);
+  if (taken) throw new KeystoreInputError(`A wallet named "${taken.name}" already exists.`);
+}
+
+/**
  * Resolve which wallet to use. If `name` is given it must exist. If omitted and
  * exactly one wallet exists, that one is used. Otherwise an error is thrown.
  */
@@ -138,19 +176,13 @@ function uniqueName(base: string, existing: Set<string>): string {
 export interface CreatedWallet {
   name: string;
   addresses: Record<string, string>;
-  /** Only populated for the local browser manager, never for the agent-facing tool. */
-  mnemonic?: string;
 }
 
-/**
- * Create N brand-new wallets. Returns names + addresses. The mnemonic is only
- * echoed back when `revealMnemonic` is true (wallet manager), never for the
- * MCP tool path.
- */
+/** Create N brand-new wallets. Returns names + addresses, never the mnemonic. */
 export function createWallets(
   count: number,
   passphrase: string,
-  opts: { namePrefix?: string; revealMnemonic?: boolean } = {},
+  opts: { namePrefix?: string } = {},
 ): CreatedWallet[] {
   if (count < 1 || count > 50) {
     throw new Error("count must be between 1 and 50.");
@@ -158,7 +190,6 @@ export function createWallets(
   logInfo("keystore.create_wallets.start", {
     count,
     namePrefix: opts.namePrefix,
-    revealMnemonic: Boolean(opts.revealMnemonic),
   });
   const ks = loadKeystore();
   const existing = new Set(ks.wallets.map((w) => w.name));
@@ -181,11 +212,7 @@ export function createWallets(
       createdAt: new Date().toISOString(),
     };
     ks.wallets.push(entry);
-    created.push({
-      name,
-      addresses,
-      mnemonic: opts.revealMnemonic ? mnemonic : undefined,
-    });
+    created.push({ name, addresses });
   }
   saveKeystore(ks);
   logInfo("keystore.create_wallets.ok", {
@@ -194,34 +221,62 @@ export function createWallets(
   return created;
 }
 
-/** Import an existing mnemonic under a name. */
-export function importWallet(
-  mnemonic: string,
-  passphrase: string,
-  name?: string,
-): CreatedWallet {
-  const trimmed = mnemonic.trim();
-  if (!isValidMnemonic(trimmed)) {
-    logError("keystore.import.fail", new Error("Invalid BIP-39 mnemonic."), {
-      requestedName: name,
-    });
-    throw new Error("Invalid BIP-39 mnemonic.");
+/** Wallet manager: one new wallet under exactly the name the user typed. */
+export function createNamedWallet(rawName: string, passphrase: string): WalletEntry {
+  const name = normalizeWalletName(rawName);
+  const ks = loadKeystore();
+  assertNameFree(ks, name);
+  const mnemonic = newMnemonic(12);
+  const entry: WalletEntry = {
+    name,
+    encSeed: encryptSecret(mnemonic, passphrase),
+    addresses: deriveAddresses(mnemonic),
+    backedUp: false,
+    createdAt: new Date().toISOString(),
+  };
+  ks.wallets.push(entry);
+  saveKeystore(ks);
+  logInfo("keystore.create_named.ok", { name, addresses: entry.addresses });
+  return entry;
+}
+
+/** Import an existing mnemonic under exactly `name`. The same seed cannot be imported twice. */
+export function importWallet(mnemonic: string, passphrase: string, rawName: string): WalletEntry {
+  const name = normalizeWalletName(rawName);
+  const phrase = mnemonic.trim().toLowerCase().split(/\s+/).join(" ");
+  if (!isValidMnemonic(phrase)) {
+    logError("keystore.import.fail", new Error("Invalid BIP-39 mnemonic."), { requestedName: name });
+    throw new KeystoreInputError("This is not a valid recovery phrase. Check the words and their order.");
   }
   const ks = loadKeystore();
-  const existing = new Set(ks.wallets.map((w) => w.name));
-  const finalName = uniqueName(name ?? "imported", existing);
-  const addresses = deriveAddresses(trimmed);
+  assertNameFree(ks, name);
+  const addresses = deriveAddresses(phrase);
+  const twin = ks.wallets.find((w) => w.addresses.ethereum === addresses.ethereum);
+  if (twin) throw new KeystoreInputError(`This wallet is already imported as "${twin.name}".`);
   const entry: WalletEntry = {
-    name: finalName,
-    encSeed: encryptSecret(trimmed, passphrase),
+    name,
+    encSeed: encryptSecret(phrase, passphrase),
     addresses,
     backedUp: true, // user already has these words
     createdAt: new Date().toISOString(),
   };
   ks.wallets.push(entry);
   saveKeystore(ks);
-  logInfo("keystore.import.ok", { name: finalName, addresses });
-  return { name: finalName, addresses };
+  logInfo("keystore.import.ok", { name, addresses });
+  return entry;
+}
+
+export function renameWallet(name: string, rawNewName: string): WalletEntry {
+  const newName = normalizeWalletName(rawNewName);
+  const ks = loadKeystore();
+  const entry = ks.wallets.find((w) => w.name === name);
+  if (!entry) throw new Error(`Wallet "${name}" not found.`);
+  if (entry.name === newName) return entry;
+  assertNameFree(ks, newName, entry);
+  entry.name = newName;
+  saveKeystore(ks);
+  logInfo("keystore.rename.ok", { from: name, to: newName });
+  return entry;
 }
 
 /** Decrypt and return a wallet's mnemonic. CLI/backup use only. */
@@ -262,6 +317,21 @@ export function syncAddresses(entry: WalletEntry, mnemonic: string): WalletEntry
     added: Object.keys(fresh).filter((n) => !entry.addresses[n]),
   });
   return { ...entry, addresses: merged };
+}
+
+/**
+ * Check the words the user put back in order against the stored mnemonic and,
+ * on a match, mark the wallet as backed up. Returns whether they matched.
+ */
+export function verifyBackup(name: string, words: string[], passphrase: string): boolean {
+  const entry = getEntry(name);
+  if (!entry) throw new Error(`Wallet "${name}" not found.`);
+  const expected = decryptSecret(entry.encSeed, passphrase).split(" ");
+  const given = words.map((w) => w.trim().toLowerCase());
+  const match = given.length === expected.length && given.every((w, i) => w === expected[i]);
+  logInfo("keystore.verify_backup", { name, match });
+  if (match && !entry.backedUp) markBackedUp(name);
+  return match;
 }
 
 export function markBackedUp(name: string): void {

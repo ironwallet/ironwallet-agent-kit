@@ -1,5 +1,6 @@
 /**
- * BlockCypher `/addrs/{a}/full` for Dogecoin. Newest first, `limit` ≤ 50,
+ * BlockCypher `/addrs/{a}/full` for Dogecoin, and a fallback for Litecoin and
+ * Bitcoin (…/v1/ltc/main, …/v1/btc/main). Newest first, `limit` ≤ 50,
  * paged with `before=<block height>` (exclusive). Keyless quota is small
  * (~100 req/h), which is fine for a wallet's occasional history check.
  */

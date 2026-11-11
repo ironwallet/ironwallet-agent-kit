@@ -1,0 +1,11 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="arrowLeft">
+<path id="Vector 28 (Stroke)" fill-rule="evenodd" clip-rule="evenodd" d="M3 5C3 3.89543 3.89543 3 5 3L19 3C20.1046 3 21 3.89543 21 5V7.0601C21 7.62071 20.7647 8.15559 20.3514 8.53441L15 13.4399V19C15 20.1046 14.1046 21 13 21H11C9.89543 21 9 20.1046 9 19V13.4399L3.64855 8.53441C3.23529 8.15559 3 7.62071 3 7.0601V5ZM19 5L5 5V7.0601L10.3514 11.9656C10.7647 12.3444 11 12.8793 11 13.4399V19H13V13.4399C13 12.8793 13.2353 12.3444 13.6486 11.9656L19 7.0601V5Z" fill="url(#paint0_linear_0_9)"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_0_9" x1="-0.105783" y1="-2.05555" x2="31.1807" y2="17.0905" gradientUnits="userSpaceOnUse">
+<stop stop-color="#2C32BA"/>
+<stop offset="1" stop-color="#0BB4EA"/>
+</linearGradient>
+</defs>
+</svg>

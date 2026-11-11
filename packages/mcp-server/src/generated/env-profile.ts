@@ -7,8 +7,12 @@ export interface BakedEnvProfile {
   swapProxyUrl: string;
   /** Rates API host (`/api/v1/rate/*`). Optional until configurations ships it. */
   ratesApiUrl?: string;
-  /** Static resources base for asset catalogs (`/assets/main/blockchains/...`). */
+  /** MCP proxy base for asset catalogs (`/assets/<branch>/blockchains/...`); fallback after the CDNs. */
   staticResourcesUrl?: string;
+  /** Public CDN bases for the same static resources, tried in order first. */
+  staticCdnUrls?: string[];
+  /** Static resources branch (`main` / `staging`). Default `main`. */
+  staticAssetsBranch?: string;
   evmRpcUrls: Record<string, string>;
   tronApiUrl: string;
   bitcoinApiUrl: string;
@@ -17,6 +21,8 @@ export interface BakedEnvProfile {
   solanaRpcUrl: string;
   tonApiUrl: string;
   xrpRpcUrl: string;
+  /** Fallback endpoints per network (not TON), same API as the primary field. Optional. */
+  rpcFallbacks?: Partial<Record<string, string[]>>;
   bitcoinTestnet: boolean;
   /**
    * Transaction-history indexers per network, tried in order. Optional: non-EVM
